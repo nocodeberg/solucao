@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Profile, UserRole } from '@/types/database.types';
 import { useRouter } from 'next/navigation';
-import { createSupabaseClient } from '@/lib/supabase/client';
+import { api } from '@/lib/api/client';
 
 interface AuthContextType {
   user: User | null;
@@ -31,71 +31,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user is already logged in
-    loadUserSession();
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      loadUserData();
+    }
   }, []);
 
-  const loadUserSession = async () => {
+  const loadUserData = async () => {
     try {
       setLoading(true);
-      const supabase = createSupabaseClient();
-
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        // Buscar profile
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        setUser(session.user);
-        setProfile(profileData);
-      }
+      const { user: userData, profile: profileData } = await api.auth.me();
+      setUser(userData);
+      setProfile(profileData);
     } catch (error) {
-      console.error('Error loading user session:', error);
+      console.error('Error loading user data:', error);
+      localStorage.removeItem('auth_token');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUserData = async () => {
-    // Mantido por compatibilidade, mas agora usa Supabase
-    await loadUserSession();
-  };
-
   const signIn = async (email: string, password: string) => {
-    const supabase = createSupabaseClient();
+    const response = await api.auth.login(email, password);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-    if (!data.user || !data.session) throw new Error('Credenciais inválidas');
-
-    // Buscar profile
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profileError) throw profileError;
+    // Save token
+    localStorage.setItem('auth_token', response.session.access_token);
 
     // Set user and profile
-    setUser(data.user);
-    setProfile(profileData);
+    setUser(response.user);
+    setProfile(response.profile);
   };
 
   const signOut = async () => {
     try {
-      const supabase = createSupabaseClient();
-      await supabase.auth.signOut();
+      await api.auth.logout();
     } catch (error) {
       console.error('Error logging out:', error);
     } finally {
+      localStorage.removeItem('auth_token');
       setUser(null);
       setProfile(null);
       router.push('/login');
