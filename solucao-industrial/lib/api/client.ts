@@ -13,6 +13,7 @@ import type {
   LancamentoMO,
   Manutencao,
   Piece,
+  Product,
   ProductionLine,
   Profile,
 } from '@/types/database.types';
@@ -158,6 +159,14 @@ export const api = {
     create: (data: unknown) => apiClient.post<ProductionLine>('/production-lines', data),
     update: (id: string, data: unknown) => apiClient.put<ProductionLine>(`/production-lines/${id}`, data),
     delete: (id: string) => apiClient.delete<ApiMessageResponse>(`/production-lines/${id}`),
+  },
+
+  // Products
+  products: {
+    list: () => apiClient.get<Product[]>('/products'),
+    create: (data: unknown) => apiClient.post<Product>('/products', data),
+    update: (id: string, data: unknown) => apiClient.put<Product>(`/products/${id}`, data),
+    delete: (id: string) => apiClient.delete<ApiMessageResponse>(`/products/${id}`),
   },
 
   // Groups
