@@ -1,0 +1,25 @@
+nul
+
+**/node_modules/
+**/.next/
+**/out/
+**/dist/
+**/.turbo/
+**/.cache/
+**/coverage/
+
+.vscode/
+.claude/
+
+Captura de ecrã*.png
+
+.env.local
+.env.*.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+Thumbs.db
+Desktop.ini
