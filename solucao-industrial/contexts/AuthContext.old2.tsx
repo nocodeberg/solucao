@@ -42,23 +42,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
+        // Buscar profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
         setUser(session.user);
-
-        // Buscar profile via API route (bypassa RLS)
-        try {
-          const response = await fetch('/api/auth/profile', {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setProfile(data.profile);
-          }
-        } catch (error) {
-          console.error('Error loading profile:', error);
-        }
+        setProfile(profileData);
       }
     } catch (error) {
       console.error('Error loading user session:', error);
@@ -68,37 +60,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loadUserData = async () => {
-    // Mantido por compatibilidade
+    // Mantido por compatibilidade, mas agora usa Supabase
     await loadUserSession();
   };
 
   const signIn = async (email: string, password: string) => {
-    // Chamar API route que usa service role key
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao fazer login');
-    }
-
-    const data = await response.json();
-
-    // Configurar sessão no Supabase client
     const supabase = createSupabaseClient();
-    await supabase.auth.setSession({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
+
+    if (error) throw error;
+    if (!data.user || !data.session) throw new Error('Credenciais inválidas');
+
+    // Buscar profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profileError) throw profileError;
 
     // Set user and profile
     setUser(data.user);
-    setProfile(data.profile);
+    setProfile(profileData);
   };
 
   const signOut = async () => {
