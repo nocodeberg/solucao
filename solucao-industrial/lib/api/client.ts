@@ -17,6 +17,7 @@ import type {
   ProductionLine,
   Profile,
 } from '@/types/database.types';
+import { createSupabaseClient } from '@/lib/supabase/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -33,19 +34,23 @@ export type AuthMeResponse = {
   profile: Profile;
 };
 
-// Obter token do localStorage (client-side only)
-const getToken = () => {
+// Obter token do Supabase (client-side only)
+const getToken = async () => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
+
+  const supabase = createSupabaseClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  return session?.access_token || null;
 };
 
 // Headers padrão
-const getHeaders = (): HeadersInit => {
+const getHeaders = async (): Promise<HeadersInit> => {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
 
-  const token = getToken();
+  const token = await getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -72,7 +77,7 @@ export const apiClient = {
   get: async <T>(endpoint: string): Promise<T> => {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'GET',
-      headers: getHeaders(),
+      headers: await getHeaders(),
     });
     return handleResponse<T>(response);
   },
@@ -81,7 +86,7 @@ export const apiClient = {
   post: async <T>(endpoint: string, data?: unknown): Promise<T> => {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
-      headers: getHeaders(),
+      headers: await getHeaders(),
       body: JSON.stringify(data),
     });
     return handleResponse<T>(response);
@@ -91,7 +96,7 @@ export const apiClient = {
   put: async <T>(endpoint: string, data: unknown): Promise<T> => {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'PUT',
-      headers: getHeaders(),
+      headers: await getHeaders(),
       body: JSON.stringify(data),
     });
     return handleResponse<T>(response);
@@ -101,7 +106,7 @@ export const apiClient = {
   patch: async <T>(endpoint: string, data: unknown): Promise<T> => {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'PATCH',
-      headers: getHeaders(),
+      headers: await getHeaders(),
       body: JSON.stringify(data),
     });
     return handleResponse<T>(response);
@@ -111,7 +116,7 @@ export const apiClient = {
   delete: async <T>(endpoint: string): Promise<T> => {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'DELETE',
-      headers: getHeaders(),
+      headers: await getHeaders(),
     });
     return handleResponse<T>(response);
   },
@@ -215,6 +220,17 @@ export const api = {
     create: (data: unknown) => apiClient.post<Cargo>('/cargos', data),
     update: (id: string, data: unknown) => apiClient.put<Cargo>(`/cargos/${id}`, data),
     delete: (id: string) => apiClient.delete<ApiMessageResponse>(`/cargos/${id}`),
+  },
+
+  // Users
+  users: {
+    list: () => apiClient.get<Profile[]>('/users'),
+    get: (id: string) => apiClient.get<Profile>(`/users/${id}`),
+    create: (data: unknown) => apiClient.post<Profile>('/users', data),
+    update: (id: string, data: unknown) => apiClient.put<Profile>(`/users/${id}`, data),
+    delete: (id: string) => apiClient.delete<ApiMessageResponse>(`/users/${id}`),
+    resetPassword: (id: string, new_password: string) =>
+      apiClient.patch<ApiMessageResponse>(`/users/${id}/reset-password`, { new_password }),
   },
 };
 

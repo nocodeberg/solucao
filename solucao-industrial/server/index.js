@@ -29,18 +29,19 @@ app.use(helmet({
 // CORS - Apenas frontend autorizado
 const corsOptions = {
   origin: function (origin, callback) {
+    // Em desenvolvimento, permitir QUALQUER origem
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+
+    // Em produção, validar origem
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'http://localhost:3000',
       'http://127.0.0.1:3000'
     ];
 
-    // Permitir requisições sem origin (Postman, etc) apenas em dev
-    if (!origin && process.env.NODE_ENV === 'development') {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -112,6 +113,7 @@ const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const employeesRoutes = require('./routes/employees');
 const productionLinesRoutes = require('./routes/productionLines');
+const productsRoutes = require('./routes/products');
 const groupsRoutes = require('./routes/groups');
 const piecesRoutes = require('./routes/pieces');
 const manutencaoRoutes = require('./routes/manutencao');
@@ -119,6 +121,7 @@ const consumoAguaRoutes = require('./routes/consumoAgua');
 const lancamentoMORoutes = require('./routes/lancamentoMO');
 const encargosRoutes = require('./routes/encargos');
 const cargosRoutes = require('./routes/cargos');
+const usersRoutes = require('./routes/users');
 const setupRoutes = require('./routes/setup');
 
 // Usar rotas
@@ -129,6 +132,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/employees', employeesRoutes);
 app.use('/api/production-lines', productionLinesRoutes);
+app.use('/api/products', productsRoutes);
 app.use('/api/groups', groupsRoutes);
 app.use('/api/pieces', piecesRoutes);
 app.use('/api/manutencao', manutencaoRoutes);
@@ -136,6 +140,7 @@ app.use('/api/consumo-agua', consumoAguaRoutes);
 app.use('/api/lancamento-mo', lancamentoMORoutes);
 app.use('/api/encargos', encargosRoutes);
 app.use('/api/cargos', cargosRoutes);
+app.use('/api/users', usersRoutes);
 
 // =====================================================
 // ERROR HANDLING
