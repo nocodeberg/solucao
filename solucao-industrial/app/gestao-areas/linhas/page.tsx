@@ -8,12 +8,13 @@ import { FormModal } from '@/components/ui/Modal';
 import { Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api/client';
-import { ProductionLine, Product } from '@/types/database.types';
+import { ProductionLine, Product, LineType } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 
 interface LinhaFormData {
   name: string;
   description: string;
+  line_type: LineType;
   active: boolean;
 }
 
@@ -33,7 +34,7 @@ export default function LinhasPage() {
   // Linha modal
   const [isLinhaModalOpen, setIsLinhaModalOpen] = useState(false);
   const [editingLinha, setEditingLinha] = useState<ProductionLine | null>(null);
-  const [linhaForm, setLinhaForm] = useState<LinhaFormData>({ name: '', description: '', active: true });
+  const [linhaForm, setLinhaForm] = useState<LinhaFormData>({ name: '', description: '', line_type: 'GALVANOPLASTIA', active: true });
   const [linhaFormErrors, setLinhaFormErrors] = useState<Partial<Record<keyof LinhaFormData, string>>>({});
   const [linhaSubmitLoading, setLinhaSubmitLoading] = useState(false);
 
@@ -81,14 +82,14 @@ export default function LinhasPage() {
   // --- Linha CRUD ---
   const handleCreateLinha = () => {
     setEditingLinha(null);
-    setLinhaForm({ name: '', description: '', active: true });
+    setLinhaForm({ name: '', description: '', line_type: 'GALVANOPLASTIA', active: true });
     setLinhaFormErrors({});
     setIsLinhaModalOpen(true);
   };
 
   const handleEditLinha = (linha: ProductionLine) => {
     setEditingLinha(linha);
-    setLinhaForm({ name: linha.name, description: linha.description || '', active: linha.active });
+    setLinhaForm({ name: linha.name, description: linha.description || '', line_type: linha.line_type, active: linha.active });
     setLinhaFormErrors({});
     setIsLinhaModalOpen(true);
   };
@@ -246,7 +247,16 @@ export default function LinhasPage() {
               <div key={linha.id} className="bg-white rounded-lg border border-gray-200 shadow-sm">
                 {/* Line Header */}
                 <div className="flex items-center justify-between px-6 py-4">
-                  <span className="text-sm font-semibold text-gray-800">{linha.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-gray-800">{linha.name}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      linha.line_type === 'VERNIZ'
+                        ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                        : 'bg-blue-100 text-blue-700 border border-blue-300'
+                    }`}>
+                      {linha.line_type === 'VERNIZ' ? 'Verniz' : 'Galvanoplastia'}
+                    </span>
+                  </div>
 
                   <div className="flex items-center gap-3">
                     <button className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
@@ -397,6 +407,36 @@ export default function LinhasPage() {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Descrição da linha (opcional)"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Linha <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setLinhaForm({ ...linhaForm, line_type: 'GALVANOPLASTIA' })}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                  linhaForm.line_type === 'GALVANOPLASTIA'
+                    ? 'bg-blue-600 text-white border-2 border-blue-600 shadow-md'
+                    : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400'
+                }`}
+              >
+                Galvanoplastia
+              </button>
+              <button
+                type="button"
+                onClick={() => setLinhaForm({ ...linhaForm, line_type: 'VERNIZ' })}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                  linhaForm.line_type === 'VERNIZ'
+                    ? 'bg-purple-600 text-white border-2 border-purple-600 shadow-md'
+                    : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-purple-400'
+                }`}
+              >
+                Verniz
+              </button>
+            </div>
           </div>
 
           <Toggle

@@ -1,5 +1,6 @@
 export type UserRole = 'ADMIN' | 'GESTOR' | 'RH' | 'OPERADOR' | 'LEITOR';
 export type LancamentoTipo = 'MOD' | 'MOI';
+export type LineType = 'GALVANOPLASTIA' | 'VERNIZ';
 
 export interface Database {
   public: {
@@ -122,6 +123,7 @@ export interface ProductionLine {
   company_id: string;
   name: string;
   description?: string;
+  line_type: LineType;
   active: boolean;
   created_at: string;
   updated_at: string;
