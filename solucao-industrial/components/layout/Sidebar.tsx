@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -33,6 +34,35 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(['gestao-areas', 'rh']);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState('Solução Industrial');
+
+  // Buscar logo e nome da empresa
+  React.useEffect(() => {
+    async function fetchCompanyInfo() {
+      if (!profile?.company_id) return;
+
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+
+        const { data, error } = await supabase
+          .from('companies')
+          .select('name, logo_url')
+          .eq('id', profile.company_id)
+          .single();
+
+        if (!error && data) {
+          setCompanyName(data.name || 'Solução Industrial');
+          setCompanyLogo(data.logo_url);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar info da empresa:', error);
+      }
+    }
+
+    fetchCompanyInfo();
+  }, [profile?.company_id]);
 
   const menuItems: MenuItem[] = [
     {
@@ -213,12 +243,26 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-dark-700">
         <div className="flex items-center justify-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
-            <span className="text-white font-bold text-3xl">SI</span>
-          </div>
+          {companyLogo ? (
+            <div className="w-32 h-24 relative">
+              <Image
+                src={companyLogo}
+                alt={companyName}
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            </div>
+          ) : (
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
+              <span className="text-white font-bold text-3xl">
+                {companyName.substring(0, 2).toUpperCase()}
+              </span>
+            </div>
+          )}
         </div>
         <h1 className="text-center text-white font-semibold mt-3">
-          Solução Industrial
+          {companyName}
         </h1>
       </div>
 
