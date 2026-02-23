@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { StatsCard } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
 import {
   Users,
   DollarSign,
@@ -15,7 +16,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { formatCurrency, MONTHS, getYearsList } from '@/lib/utils';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ConsumoAgua, LancamentoMO, Manutencao } from '@/types/database.types';
+import type { ConsumoAgua, LancamentoMO, Manutencao, Employee, ProductionLine } from '@/types/database.types';
 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
@@ -58,6 +59,15 @@ export default function DashboardPage() {
 
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Estados para o modal de lançamentos
+  const [isLancamentoModalOpen, setIsLancamentoModalOpen] = useState(false);
+  const [modalTipo, setModalTipo] = useState<'MOD' | 'MOI' | 'Manutencao' | 'Agua'>('MOD');
+  const [lancamentosDetalhados, setLancamentosDetalhados] = useState<LancamentoMO[]>([]);
+  const [manutencaoDetalhada, setManutencaoDetalhada] = useState<Manutencao[]>([]);
+  const [aguaDetalhada, setAguaDetalhada] = useState<ConsumoAgua[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [linhas, setLinhas] = useState<ProductionLine[]>([]);
 
   const loadChartData = useCallback(async () => {
     if (!profile?.company_id) return;
@@ -119,11 +129,20 @@ export default function DashboardPage() {
 
     try {
       // Carregar dados de funcionários ativos
-      const { count: funcionariosCount } = await supabase
+      const { count: funcionariosCount, data: employeesData } = await supabase
         .from('employees')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('company_id', profile.company_id)
         .eq('active', true);
+
+      // Carregar linhas de produção
+      const { data: linhasData } = await supabase
+        .from('production_lines')
+        .select('*')
+        .eq('company_id', profile.company_id);
+
+      setEmployees(employeesData || []);
+      setLinhas(linhasData || []);
 
       // Carregar lançamentos de MO no período
       let moQuery = supabase
@@ -249,6 +268,71 @@ export default function DashboardPage() {
     alert('Funcionalidade de exportação será implementada');
   };
 
+  const handleOpenLancamentos = async (tipo: 'MOD' | 'MOI' | 'Manutencao' | 'Agua') => {
+    if (!profile?.company_id) return;
+
+    setModalTipo(tipo);
+    setIsLancamentoModalOpen(true);
+
+    try {
+      if (tipo === 'MOD' || tipo === 'MOI') {
+        // Buscar lançamentos de MO
+        let query = supabase
+          .from('lancamento_mo')
+          .select('*')
+          .eq('company_id', profile.company_id)
+          .eq('tipo', tipo)
+          .eq('ano', selectedYear);
+
+        if (!showTotal && selectedMonths.length > 0) {
+          query = query.in('mes', selectedMonths);
+        }
+
+        const { data } = await query.order('mes', { ascending: true });
+        setLancamentosDetalhados(data || []);
+      } else if (tipo === 'Manutencao') {
+        // Buscar manutenções
+        let query = supabase
+          .from('manutencao')
+          .select('*')
+          .eq('company_id', profile.company_id);
+
+        if (!showTotal && selectedMonths.length > 0) {
+          const startDate = `${selectedYear}-${String(Math.min(...selectedMonths)).padStart(2, '0')}-01`;
+          const endMonth = Math.max(...selectedMonths);
+          const endDate = `${selectedYear}-${String(endMonth).padStart(2, '0')}-31`;
+          query = query.gte('data', startDate).lte('data', endDate);
+        } else {
+          query = query.gte('data', `${selectedYear}-01-01`).lte('data', `${selectedYear}-12-31`);
+        }
+
+        const { data } = await query.order('data', { ascending: false });
+        setManutencaoDetalhada(data || []);
+      } else if (tipo === 'Agua') {
+        // Buscar consumo de água
+        let query = supabase
+          .from('consumo_agua')
+          .select('*')
+          .eq('company_id', profile.company_id);
+
+        if (!showTotal && selectedMonths.length > 0) {
+          const startDate = `${selectedYear}-${String(Math.min(...selectedMonths)).padStart(2, '0')}-01`;
+          const endMonth = Math.max(...selectedMonths);
+          const endDate = `${selectedYear}-${String(endMonth).padStart(2, '0')}-31`;
+          query = query.gte('data', startDate).lte('data', endDate);
+        } else {
+          query = query.gte('data', `${selectedYear}-01-01`).lte('data', `${selectedYear}-12-31`);
+        }
+
+        const { data } = await query.order('data', { ascending: false });
+        setAguaDetalhada(data || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar detalhes:', error);
+      alert('Erro ao carregar detalhes dos lançamentos');
+    }
+  };
+
   return (
     <MainLayout title="Dashboard">
       {loading && (
@@ -316,12 +400,14 @@ export default function DashboardPage() {
           value={formatCurrency(stats.custoMOD)}
           icon={<DollarSign className="w-6 h-6" />}
           color="purple"
+          onClick={() => handleOpenLancamentos('MOD')}
         />
         <StatsCard
           title="Custo M.O.I"
           value={formatCurrency(stats.custoMOI)}
           icon={<DollarSign className="w-6 h-6" />}
           color="blue"
+          onClick={() => handleOpenLancamentos('MOI')}
         />
         <StatsCard
           title="Matéria prima"
@@ -337,12 +423,14 @@ export default function DashboardPage() {
           value={formatCurrency(stats.consumoAgua)}
           icon={<Droplets className="w-6 h-6" />}
           color="blue"
+          onClick={() => handleOpenLancamentos('Agua')}
         />
         <StatsCard
           title="Manutenção"
           value={formatCurrency(stats.manutencao)}
           icon={<Wrench className="w-6 h-6" />}
           color="purple"
+          onClick={() => handleOpenLancamentos('Manutencao')}
         />
         <StatsCard
           title="Total operação"
@@ -437,6 +525,227 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Modal de Detalhes dos Lançamentos */}
+      <Modal
+        isOpen={isLancamentoModalOpen}
+        onClose={() => setIsLancamentoModalOpen(false)}
+        title={`Detalhes - ${
+          modalTipo === 'MOD' ? 'M.O.D'
+          : modalTipo === 'MOI' ? 'M.O.I'
+          : modalTipo === 'Manutencao' ? 'Manutenção'
+          : 'Consumo de Água'
+        }`}
+        description={`${showTotal ? 'Ano completo' : selectedMonths.map(m => MONTHS.find(mon => mon.value === m)?.label).join(', ')} de ${selectedYear}`}
+        size="xl"
+      >
+        <div className="space-y-4">
+          {(modalTipo === 'MOD' || modalTipo === 'MOI') && (
+            <>
+              {lancamentosDetalhados.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">Nenhum lançamento encontrado</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Funcionário
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Linha
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Período
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Salário Base
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Custo Mensal
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Observação
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lancamentosDetalhados.map((lanc) => {
+                        const emp = employees.find((e) => e.id === lanc.employee_id);
+                        const linha = linhas.find((l) => l.id === lanc.production_line_id);
+                        const mes = MONTHS.find((m) => m.value === lanc.mes);
+
+                        return (
+                          <tr key={lanc.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {emp?.nome || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {linha?.name || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {mes?.fullLabel || ''} / {lanc.ano}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
+                              {formatCurrency(parseFloat(lanc.salario_base.toString()))}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right font-bold">
+                              {formatCurrency(parseFloat(lanc.custo_mensal.toString()))}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {lanc.observacao || '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
+                          Total:
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
+                          {formatCurrency(
+                            lancamentosDetalhados.reduce(
+                              (sum, l) => sum + parseFloat(l.custo_mensal.toString()),
+                              0
+                            )
+                          )}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {modalTipo === 'Manutencao' && (
+            <>
+              {manutencaoDetalhada.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">Nenhuma manutenção encontrada</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Data
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Descrição
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Observação
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Valor
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {manutencaoDetalhada.map((manut) => (
+                        <tr key={manut.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {new Date(manut.data).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {manut.descricao || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {manut.observacao || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right font-bold">
+                            {formatCurrency(parseFloat(manut.valor.toString()))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                      <tr>
+                        <td colSpan={3} className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
+                          Total:
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
+                          {formatCurrency(
+                            manutencaoDetalhada.reduce(
+                              (sum, m) => sum + parseFloat(m.valor.toString()),
+                              0
+                            )
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {modalTipo === 'Agua' && (
+            <>
+              {aguaDetalhada.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">Nenhum consumo de água encontrado</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Data
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Descrição
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Observação
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Valor
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {aguaDetalhada.map((agua) => (
+                        <tr key={agua.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {new Date(agua.data).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {agua.descricao || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {agua.observacao || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right font-bold">
+                            {formatCurrency(parseFloat(agua.valor.toString()))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                      <tr>
+                        <td colSpan={3} className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
+                          Total:
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
+                          {formatCurrency(
+                            aguaDetalhada.reduce(
+                              (sum, a) => sum + parseFloat(a.valor.toString()),
+                              0
+                            )
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </Modal>
     </MainLayout>
   );
 }

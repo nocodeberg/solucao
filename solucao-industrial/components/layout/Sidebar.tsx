@@ -17,6 +17,7 @@ import {
   Clock,
   FileText,
   Briefcase,
+  FlaskConical,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -36,33 +37,51 @@ export default function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>(['gestao-areas', 'rh']);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('Solução Industrial');
+  const [isClient, setIsClient] = useState(false);
+
+  // Garantir que está no cliente
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Buscar logo e nome da empresa
   React.useEffect(() => {
+    if (!isClient) return;
+
     async function fetchCompanyInfo() {
-      if (!profile?.company_id) return;
+      console.log('🔍 Sidebar - Profile:', profile);
+      console.log('🔍 Sidebar - Company ID:', profile?.company_id);
+
+      if (!profile?.company_id) {
+        console.warn('⚠️ Sidebar - Sem company_id no profile');
+        return;
+      }
 
       try {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
+        const { createSupabaseClient } = await import('@/lib/supabase/client');
+        const supabase = createSupabaseClient();
 
         const { data, error } = await supabase
           .from('companies')
           .select('name, logo_url')
           .eq('id', profile.company_id)
-          .single();
+          .single<{ name: string; logo_url: string | null }>();
+
+        console.log('📊 Sidebar - Dados da empresa:', data);
+        console.log('❌ Sidebar - Erro:', error);
 
         if (!error && data) {
           setCompanyName(data.name || 'Solução Industrial');
           setCompanyLogo(data.logo_url);
+          console.log('✅ Sidebar - Logo definido:', data.logo_url);
         }
       } catch (error) {
-        console.error('Erro ao buscar info da empresa:', error);
+        console.error('❌ Erro ao buscar info da empresa:', error);
       }
     }
 
     fetchCompanyInfo();
-  }, [profile?.company_id]);
+  }, [profile, isClient]);
 
   const menuItems: MenuItem[] = [
     {
@@ -99,6 +118,12 @@ export default function Sidebar() {
           label: 'Consumo água',
           icon: <Droplets className="w-4 h-4" />,
           href: '/consumo-agua',
+        },
+        {
+          id: 'lancamento-pretratamento',
+          label: 'Lançamento',
+          icon: <FlaskConical className="w-4 h-4" />,
+          href: '/gestao-areas/lancamento-pretratamento',
         },
         {
           id: 'peca-por-hora',

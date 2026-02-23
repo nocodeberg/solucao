@@ -43,9 +43,10 @@ interface StatsCardProps {
     value: string;
     direction: 'up' | 'down';
   };
+  onClick?: () => void;
 }
 
-export function StatsCard({ title, value, icon, color = 'blue', trend }: StatsCardProps) {
+export function StatsCard({ title, value, icon, color = 'blue', trend, onClick }: StatsCardProps) {
   const colors = {
     blue: 'from-blue-500 to-blue-600',
     purple: 'from-purple-500 to-purple-600',
@@ -55,7 +56,13 @@ export function StatsCard({ title, value, icon, color = 'blue', trend }: StatsCa
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div
+      className={cn(
+        "bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow",
+        onClick && "cursor-pointer hover:border-primary-300"
+      )}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600">{title}</p>

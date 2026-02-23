@@ -77,6 +77,18 @@ export interface Database {
         Update: Partial<Omit<ConsumoAgua, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      chemical_products: {
+        Row: ChemicalProduct;
+        Insert: Omit<ChemicalProduct, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<ChemicalProduct, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      chemical_product_launches: {
+        Row: ChemicalProductLaunch;
+        Insert: Omit<ChemicalProductLaunch, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<ChemicalProductLaunch, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -260,4 +272,37 @@ export interface PieceWithGroup extends Piece {
 
 export interface ManutencaoWithLine extends Manutencao {
   production_line?: ProductionLine;
+}
+
+export interface ChemicalProduct {
+  id: string;
+  company_id: string;
+  production_line_id?: string;
+  name: string;
+  unit_price: number;
+  unit: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChemicalProductLaunch {
+  id: string;
+  company_id: string;
+  chemical_product_id: string;
+  production_line_id?: string;
+  mes: number;
+  ano: number;
+  quantidade: number;
+  consumo: number;
+  custo_unitario: number;
+  custo_total: number;
+  observacao?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChemicalProductLaunchWithProduct extends ChemicalProductLaunch {
+  chemical_product?: ChemicalProduct;
 }
