@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const { withRetry } = require('../config/supabase');
 
 /**
  * Middleware de autenticação
@@ -14,19 +15,23 @@ async function authenticate(req, res, next) {
 
     const token = authHeader.substring(7);
 
-    // Validar token com Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // Validar token com Supabase (com retry automático)
+    const { data: { user }, error } = await withRetry(
+      () => supabase.auth.getUser(token)
+    );
 
     if (error || !user) {
       return res.status(401).json({ error: 'Token inválido ou expirado' });
     }
 
-    // Buscar profile do usuário
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // Buscar profile do usuário (com retry automático)
+    const { data: profile, error: profileError } = await withRetry(
+      () => supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+    );
 
     if (profileError || !profile) {
       return res.status(403).json({ error: 'Perfil de usuário não encontrado' });
@@ -39,6 +44,16 @@ async function authenticate(req, res, next) {
     next();
   } catch (error) {
     console.error('Auth error:', error);
+
+    // Mensagem mais clara para timeout
+    if (error.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        error.cause?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        error.message === 'fetch failed') {
+      return res.status(503).json({
+        error: 'Erro de conexão com o banco de dados. Verifique sua conexão com a internet e tente novamente.'
+      });
+    }
+
     res.status(500).json({ error: 'Erro ao autenticar' });
   }
 }

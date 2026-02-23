@@ -39,29 +39,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const supabase = createSupabaseClient();
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // Timeout de 10 segundos para getSession
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Session timeout')), 10000)
+      );
+
+      const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
 
       if (session?.user) {
         setUser(session.user);
 
-        // Buscar profile via API route (bypassa RLS)
+        // Buscar profile via API route (bypassa RLS) - com timeout
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 segundos
+
           const response = await fetch('/api/auth/profile', {
             headers: {
               'Authorization': `Bearer ${session.access_token}`
-            }
+            },
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             const data = await response.json();
             setProfile(data.profile);
+          } else if (response.status === 503) {
+            // Erro de rede/timeout do Supabase
+            console.warn('Erro de conexão ao carregar profile. Tentando novamente...');
+            // Não bloqueia a aplicação, apenas loga o erro
           }
         } catch (error) {
           console.error('Error loading profile:', error);
+          // Não bloqueia a aplicação - permite continuar sem profile
         }
       }
     } catch (error) {
       console.error('Error loading user session:', error);
+      // Em caso de timeout, redireciona para login
+      if (error instanceof Error && error.message.includes('timeout')) {
+        console.warn('Timeout ao carregar sessão - redirecionando para login');
+        // Não redireciona automaticamente para evitar loops
+      }
     } finally {
       setLoading(false);
     }

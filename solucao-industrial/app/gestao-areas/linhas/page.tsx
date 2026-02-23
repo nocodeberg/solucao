@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import Toggle from '@/components/ui/Toggle';
 import { FormModal } from '@/components/ui/Modal';
-import { Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import Modal from '@/components/ui/Modal';
+import { Pencil, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api/client';
-import { ProductionLine, Product, LineType } from '@/types/database.types';
+import { ProductionLine, Product, LineType, ChemicalProduct } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
+import { createSupabaseClient } from '@/lib/supabase/client';
 
 interface LinhaFormData {
   name: string;
@@ -24,12 +26,40 @@ interface ProductFormData {
   published: boolean;
 }
 
+const MONTHS = [
+  { value: 1, label: 'Jan', fullLabel: 'Janeiro' },
+  { value: 2, label: 'Fev', fullLabel: 'Fevereiro' },
+  { value: 3, label: 'Mar', fullLabel: 'Março' },
+  { value: 4, label: 'Abr', fullLabel: 'Abril' },
+  { value: 5, label: 'Mai', fullLabel: 'Maio' },
+  { value: 6, label: 'Jun', fullLabel: 'Junho' },
+  { value: 7, label: 'Jul', fullLabel: 'Julho' },
+  { value: 8, label: 'Ago', fullLabel: 'Agosto' },
+  { value: 9, label: 'Set', fullLabel: 'Setembro' },
+  { value: 10, label: 'Out', fullLabel: 'Outubro' },
+  { value: 11, label: 'Nov', fullLabel: 'Novembro' },
+  { value: 12, label: 'Dez', fullLabel: 'Dezembro' },
+];
+
+const currentYear = new Date().getFullYear();
+const currentMonth = new Date().getMonth() + 1;
+
 export default function LinhasPage() {
-  const { canCreate, canEdit, canDelete } = useAuth();
+  const { canCreate, canEdit, canDelete, profile } = useAuth();
+  const supabase = useMemo(() => createSupabaseClient(), []);
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [expandedLines, setExpandedLines] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  // Estados para o modal de lançamento
+  const [isLancamentoModalOpen, setIsLancamentoModalOpen] = useState(false);
+  const [selectedLineForLaunch, setSelectedLineForLaunch] = useState<ProductionLine | null>(null);
+  const [chemicalProducts, setChemicalProducts] = useState<ChemicalProduct[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [launchData, setLaunchData] = useState<Record<string, number>>({});
+  const [launchLoading, setLaunchLoading] = useState(false);
 
   // Linha modal
   const [isLinhaModalOpen, setIsLinhaModalOpen] = useState(false);
@@ -46,11 +76,12 @@ export default function LinhasPage() {
   const [produtoFormErrors, setProdutoFormErrors] = useState<Partial<Record<keyof ProductFormData, string>>>({});
   const [produtoSubmitLoading, setProdutoSubmitLoading] = useState(false);
 
+
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (retryCount = 0) => {
     try {
       setLoading(true);
       const [linhasData, productsData] = await Promise.all([
@@ -59,9 +90,24 @@ export default function LinhasPage() {
       ]);
       setLinhas(linhasData);
       setAllProducts(productsData);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
-      alert('Erro ao carregar dados');
+
+      // Retry automático em caso de erro de rede
+      if (retryCount < 2) {
+        console.log(`Tentando reconectar (tentativa ${retryCount + 1}/2)...`);
+        setTimeout(() => loadData(retryCount + 1), 2000);
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+
+      // Mensagem mais amigável para o usuário
+      if (message.includes('Failed to fetch') || message.includes('Network') || message.includes('503')) {
+        alert('❌ Erro de conexão\n\nNão foi possível conectar ao servidor. Verifique:\n• Sua conexão com a internet\n• Se o servidor está rodando\n\nTentando reconectar automaticamente...');
+      } else {
+        alert('Erro ao carregar dados: ' + message);
+      }
     } finally {
       setLoading(false);
     }
@@ -206,6 +252,86 @@ export default function LinhasPage() {
     }
   };
 
+  // --- Lançamento de Produtos Químicos ---
+  const handleOpenLancamentoModal = async (linha: ProductionLine) => {
+    setSelectedLineForLaunch(linha);
+    setSelectedMonth(currentMonth);
+    setSelectedYear(currentYear);
+    setLaunchData({});
+
+    // Carregar produtos químicos desta linha
+    if (profile?.company_id) {
+      const { data, error } = await supabase
+        .from('chemical_products')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('production_line_id', linha.id)
+        .eq('active', true)
+        .order('name');
+
+      if (!error && data) {
+        setChemicalProducts(data);
+      }
+    }
+
+    setIsLancamentoModalOpen(true);
+  };
+
+  const handleQuantityChange = (productId: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setLaunchData((prev) => ({
+      ...prev,
+      [productId]: numValue,
+    }));
+  };
+
+  const handleSaveLaunches = async () => {
+    if (!profile?.company_id || !profile?.id || !selectedLineForLaunch) return;
+
+    setLaunchLoading(true);
+    try {
+      const launches = [];
+
+      for (const product of chemicalProducts) {
+        const quantidade = launchData[product.id] || 0;
+        const custo_total = quantidade * product.unit_price;
+
+        launches.push({
+          company_id: profile.company_id,
+          chemical_product_id: product.id,
+          production_line_id: selectedLineForLaunch.id,
+          mes: selectedMonth,
+          ano: selectedYear,
+          quantidade,
+          consumo: 0,
+          custo_unitario: product.unit_price,
+          custo_total,
+          created_by: profile.id,
+        });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('chemical_product_launches')
+        .upsert(launches);
+
+      if (error) {
+        console.error('Erro ao salvar lançamento:', error);
+        throw error;
+      }
+
+      alert('Lançamentos salvos com sucesso!');
+      setIsLancamentoModalOpen(false);
+      setLaunchData({});
+    } catch (error) {
+      console.error('Erro ao salvar lançamentos:', error);
+      alert('Erro ao salvar lançamentos');
+    } finally {
+      setLaunchLoading(false);
+    }
+  };
+
+
   return (
     <MainLayout title="Cadastro Processo">
       {/* Tabs + Nova Linha */}
@@ -259,9 +385,14 @@ export default function LinhasPage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <button className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      Realizar lançamento de Linha
-                    </button>
+                    {canCreate && (
+                      <button
+                        onClick={() => handleOpenLancamentoModal(linha)}
+                        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Realizar lançamento de Linha
+                      </button>
+                    )}
 
                     <Toggle
                       checked={linha.active}
@@ -496,6 +627,118 @@ export default function LinhasPage() {
           />
         </div>
       </FormModal>
+
+      {/* Modal: Lançamento de Produtos Químicos */}
+      <Modal
+        isOpen={isLancamentoModalOpen}
+        onClose={() => setIsLancamentoModalOpen(false)}
+        title="Lançamento de Pré-Tratamento"
+        size="xl"
+      >
+        <div className="space-y-6">
+          {/* Seletor de Meses */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {MONTHS.map((month) => (
+              <button
+                key={month.value}
+                onClick={() => setSelectedMonth(month.value)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedMonth === month.value
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {month.label}/{selectedYear}
+              </button>
+            ))}
+          </div>
+
+          {/* Tabela de Produtos Químicos */}
+          {chemicalProducts.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              Nenhum produto químico cadastrado para esta linha
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                      Produtos
+                    </th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                      Lançamento
+                    </th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                      Consumo
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                      Custo/kg
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                      Custo Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {chemicalProducts.map((product) => {
+                    const quantidade = launchData[product.id] || 0;
+                    const custoTotal = quantidade * product.unit_price;
+
+                    return (
+                      <tr key={product.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {product.name}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 justify-center">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={launchData[product.id] || 0}
+                              onChange={(e) => handleQuantityChange(product.id, e.target.value)}
+                              className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                            <Check className="w-5 h-5 text-green-500" />
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center text-sm text-gray-600">
+                          -
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-900">
+                          {formatCurrency(product.unit_price)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                          {formatCurrency(custoTotal)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Botões de Ação */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={() => setIsLancamentoModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveLaunches}
+              disabled={launchLoading || chemicalProducts.length === 0}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {launchLoading ? 'Salvando...' : 'Salvar Lançamentos'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
     </MainLayout>
   );
 }
