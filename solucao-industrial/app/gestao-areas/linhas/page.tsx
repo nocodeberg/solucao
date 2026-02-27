@@ -254,13 +254,20 @@ export default function LinhasPage() {
 
   // --- Lançamento de Produtos Químicos ---
   const handleOpenLancamentoModal = async (linha: ProductionLine) => {
+    console.log('🔍 Abrindo modal para linha:', linha.name, 'ID:', linha.id);
+
     setSelectedLineForLaunch(linha);
     setSelectedMonth(currentMonth);
     setSelectedYear(currentYear);
     setLaunchData({});
+    setChemicalProducts([]); // Limpa produtos anteriores
 
     // Carregar produtos químicos desta linha
     if (profile?.company_id) {
+      console.log('📦 Buscando produtos químicos...');
+      console.log('   - Company ID:', profile.company_id);
+      console.log('   - Production Line ID:', linha.id);
+
       const { data, error } = await supabase
         .from('chemical_products')
         .select('*')
@@ -269,9 +276,20 @@ export default function LinhasPage() {
         .eq('active', true)
         .order('name');
 
-      if (!error && data) {
-        setChemicalProducts(data);
+      if (error) {
+        console.error('❌ Erro ao carregar produtos:', error);
+        alert('Erro ao carregar produtos químicos: ' + error.message);
+      } else {
+        console.log('✅ Produtos encontrados:', data?.length || 0);
+        console.log('📋 Lista de produtos:', data);
+        setChemicalProducts(data || []);
+
+        if (!data || data.length === 0) {
+          console.warn('⚠️ Nenhum produto químico encontrado para esta linha!');
+        }
       }
+    } else {
+      console.error('❌ Profile não encontrado ou sem company_id');
     }
 
     setIsLancamentoModalOpen(true);
