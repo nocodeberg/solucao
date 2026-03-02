@@ -49,6 +49,7 @@ export default function LinhasPage() {
   const supabase = useMemo(() => createSupabaseClient(), []);
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [allChemicalProducts, setAllChemicalProducts] = useState<ChemicalProduct[]>([]);
   const [expandedLines, setExpandedLines] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
@@ -59,6 +60,7 @@ export default function LinhasPage() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [launchData, setLaunchData] = useState<Record<string, number>>({});
+  const [consumptionData, setConsumptionData] = useState<Record<string, number>>({});
   const [launchLoading, setLaunchLoading] = useState(false);
 
   // Linha modal
@@ -81,6 +83,13 @@ export default function LinhasPage() {
     loadData();
   }, []);
 
+  // Carregar lançamentos quando mês/ano mudar
+  useEffect(() => {
+    if (isLancamentoModalOpen && selectedLineForLaunch) {
+      loadExistingLaunches();
+    }
+  }, [selectedMonth, selectedYear, isLancamentoModalOpen, selectedLineForLaunch]);
+
   const loadData = async (retryCount = 0) => {
     try {
       setLoading(true);
@@ -90,6 +99,28 @@ export default function LinhasPage() {
       ]);
       setLinhas(linhasData);
       setAllProducts(productsData);
+
+      // Carregar produtos químicos
+      if (profile?.company_id) {
+        console.log('🔍 Carregando produtos químicos para company_id:', profile.company_id);
+        const { data: chemicalData, error: chemicalError } = await supabase
+          .from('chemical_products')
+          .select('*')
+          .eq('company_id', profile.company_id)
+          .eq('active', true)
+          .order('name');
+
+        if (chemicalError) {
+          console.error('❌ Erro ao carregar produtos químicos:', chemicalError);
+        } else {
+          console.log('✅ Produtos químicos carregados:', chemicalData?.length || 0);
+          console.log('📦 Dados:', chemicalData);
+        }
+
+        setAllChemicalProducts(chemicalData || []);
+      } else {
+        console.warn('⚠️ Nenhum company_id encontrado no profile');
+      }
     } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
 
@@ -115,6 +146,9 @@ export default function LinhasPage() {
 
   const getProductsByLine = (lineId: string) =>
     allProducts.filter((p) => p.production_line_id === lineId);
+
+  const getChemicalProductsByLine = (lineId: string) =>
+    allChemicalProducts.filter((p) => p.production_line_id === lineId);
 
   const toggleExpand = (lineId: string) => {
     setExpandedLines((prev) => {
@@ -252,6 +286,36 @@ export default function LinhasPage() {
     }
   };
 
+  // Carregar lançamentos existentes do mês/ano selecionado
+  const loadExistingLaunches = async () => {
+    if (!profile?.company_id || !selectedLineForLaunch) return;
+
+    const { data, error } = await supabase
+      .from('chemical_product_launches')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .eq('production_line_id', selectedLineForLaunch.id)
+      .eq('mes', selectedMonth)
+      .eq('ano', selectedYear);
+
+    if (error) {
+      console.error('Erro ao carregar lançamentos:', error);
+      return;
+    }
+
+    // Preencher launchData e consumptionData com dados existentes
+    const launches: Record<string, number> = {};
+    const consumptions: Record<string, number> = {};
+
+    data?.forEach((launch: any) => {
+      launches[launch.chemical_product_id] = launch.quantidade || 0;
+      consumptions[launch.chemical_product_id] = launch.consumo || 0;
+    });
+
+    setLaunchData(launches);
+    setConsumptionData(consumptions);
+  };
+
   // --- Lançamento de Produtos Químicos ---
   const handleOpenLancamentoModal = async (linha: ProductionLine) => {
     console.log('🔍 Abrindo modal para linha:', linha.name, 'ID:', linha.id);
@@ -260,6 +324,7 @@ export default function LinhasPage() {
     setSelectedMonth(currentMonth);
     setSelectedYear(currentYear);
     setLaunchData({});
+    setConsumptionData({});
     setChemicalProducts([]); // Limpa produtos anteriores
 
     // Carregar produtos químicos desta linha
@@ -386,6 +451,13 @@ export default function LinhasPage() {
           {linhas.map((linha) => {
             const isExpanded = expandedLines.has(linha.id);
             const lineProducts = getProductsByLine(linha.id);
+            const lineChemicalProducts = getChemicalProductsByLine(linha.id);
+
+            if (isExpanded) {
+              console.log('🎨 Renderizando linha expandida:', linha.name);
+              console.log('📊 Produtos químicos desta linha:', lineChemicalProducts.length);
+              console.log('📋 Dados dos produtos químicos:', lineChemicalProducts);
+            }
 
             return (
               <div key={linha.id} className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -456,57 +528,86 @@ export default function LinhasPage() {
                 {/* Expanded Products Table */}
                 {isExpanded && (
                   <div className="border-t border-gray-200">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 text-gray-600">
-                          <th className="text-left px-6 py-3 font-medium">Produto</th>
-                          <th className="text-left px-6 py-3 font-medium">Valor</th>
-                          <th className="text-left px-6 py-3 font-medium">Publicar</th>
-                          <th className="text-left px-6 py-3 font-medium">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {lineProducts.map((product) => (
-                          <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50">
-                            <td className="px-6 py-3 text-gray-800">{product.name}</td>
-                            <td className="px-6 py-3 text-gray-800">{formatCurrency(product.price)}</td>
-                            <td className="px-6 py-3">
-                              <Toggle
-                                checked={product.published}
-                                onChange={() => handleTogglePublished(product)}
-                              />
-                            </td>
-                            <td className="px-6 py-3">
-                              <div className="flex items-center gap-2">
-                                {canEdit && (
-                                  <button
-                                    onClick={() => handleEditProduct(product)}
-                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  >
-                                    <Pencil className="w-4 h-4" />
-                                  </button>
-                                )}
-                                {canDelete && (
-                                  <button
-                                    onClick={() => handleDeleteProduct(product)}
-                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
+                    {/* Produtos Químicos */}
+                    {lineChemicalProducts.length > 0 && (
+                      <div className="p-4 bg-blue-50">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Produtos Químicos ({lineChemicalProducts.length})</h3>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-blue-100 text-gray-700">
+                              <th className="text-left px-4 py-2 font-medium">Produto Químico</th>
+                              <th className="text-left px-4 py-2 font-medium">Preço Unitário</th>
+                              <th className="text-left px-4 py-2 font-medium">Unidade</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lineChemicalProducts.map((product) => (
+                              <tr key={product.id} className="border-t border-blue-200 hover:bg-blue-100">
+                                <td className="px-4 py-2 text-gray-800">{product.name}</td>
+                                <td className="px-4 py-2 text-gray-800">{formatCurrency(product.unit_price)}</td>
+                                <td className="px-4 py-2 text-gray-600">{product.unit}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Produtos de Matéria-Prima */}
+                    <div className="p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Produtos / Matéria-Prima ({lineProducts.length})</h3>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 text-gray-600">
+                            <th className="text-left px-4 py-2 font-medium">Produto</th>
+                            <th className="text-left px-4 py-2 font-medium">Valor</th>
+                            <th className="text-left px-4 py-2 font-medium">Publicar</th>
+                            <th className="text-left px-4 py-2 font-medium">Ações</th>
                           </tr>
-                        ))}
-                        {lineProducts.length === 0 && (
-                          <tr>
-                            <td colSpan={4} className="px-6 py-4 text-center text-gray-400 text-sm">
-                              Nenhum produto cadastrado nesta linha
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {lineProducts.map((product) => (
+                            <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50">
+                              <td className="px-4 py-2 text-gray-800">{product.name}</td>
+                              <td className="px-4 py-2 text-gray-800">{formatCurrency(product.price)}</td>
+                              <td className="px-4 py-2">
+                                <Toggle
+                                  checked={product.published}
+                                  onChange={() => handleTogglePublished(product)}
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <div className="flex items-center gap-2">
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => handleEditProduct(product)}
+                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button
+                                      onClick={() => handleDeleteProduct(product)}
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {lineProducts.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="px-4 py-3 text-center text-gray-400 text-sm">
+                                Nenhum produto de matéria-prima cadastrado
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -650,7 +751,7 @@ export default function LinhasPage() {
       <Modal
         isOpen={isLancamentoModalOpen}
         onClose={() => setIsLancamentoModalOpen(false)}
-        title="Lançamento de Pré-Tratamento"
+        title={selectedLineForLaunch ? `Lançamento de Pré-Tratamento - ${selectedLineForLaunch.name}` : 'Lançamento de Pré-Tratamento'}
         size="xl"
       >
         <div className="space-y-6">
@@ -701,6 +802,7 @@ export default function LinhasPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {chemicalProducts.map((product) => {
                     const quantidade = launchData[product.id] || 0;
+                    const consumo = consumptionData[product.id] || 0;
                     const custoTotal = quantidade * product.unit_price;
 
                     return (
@@ -721,8 +823,8 @@ export default function LinhasPage() {
                             <Check className="w-5 h-5 text-green-500" />
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center text-sm text-gray-600">
-                          -
+                        <td className="px-4 py-3 text-center text-sm text-gray-900">
+                          {consumo > 0 ? consumo.toFixed(2) : '-'}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-gray-900">
                           {formatCurrency(product.unit_price)}
