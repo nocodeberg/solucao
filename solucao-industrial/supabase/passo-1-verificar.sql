@@ -8,7 +8,7 @@ SELECT
   cp.name,
   cp.company_id,
   cp.production_line_id,
-  ''SEM LINHA'' as status
+  'SEM LINHA' as status
 FROM chemical_products cp
 WHERE cp.production_line_id IS NULL
   AND cp.active = true
