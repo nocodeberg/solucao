@@ -29,21 +29,26 @@ app.use(helmet({
 // CORS - Apenas frontend autorizado
 const corsOptions = {
   origin: function (origin, callback) {
-    // Em desenvolvimento, permitir QUALQUER origem
-    if (process.env.NODE_ENV === 'development') {
-      return callback(null, true);
-    }
-
-    // Em produção, validar origem
+    // Lista de origens permitidas
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'http://localhost:3000',
       'http://127.0.0.1:3000'
     ];
 
+    // Em desenvolvimento, permitir localhost mas validar
+    if (process.env.NODE_ENV === 'development') {
+      // Permite localhost mas ainda valida a lista
+      if (!origin || allowedOrigins.some(allowed => origin?.startsWith(allowed))) {
+        return callback(null, true);
+      }
+    }
+
+    // Em produção, validar origem estritamente
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

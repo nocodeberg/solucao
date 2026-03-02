@@ -39,3 +39,18 @@ next-env.d.ts
 
 .vercel
 .env.production
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.log
+
+# Screenshots temporários
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Server
+/server/node_modules
+/server/.env

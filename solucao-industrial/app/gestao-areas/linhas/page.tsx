@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import Toggle from '@/components/ui/Toggle';
@@ -8,10 +8,11 @@ import { FormModal } from '@/components/ui/Modal';
 import Modal from '@/components/ui/Modal';
 import { Pencil, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSupabase } from '@/contexts/SupabaseContext';
 import { api } from '@/lib/api/client';
-import { ProductionLine, Product, LineType, ChemicalProduct } from '@/types/database.types';
+import { ProductionLine, Product, LineType, ChemicalProduct, ChemicalProductLaunch } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
-import { createSupabaseClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 interface LinhaFormData {
   name: string;
@@ -46,7 +47,7 @@ const currentMonth = new Date().getMonth() + 1;
 
 export default function LinhasPage() {
   const { canCreate, canEdit, canDelete, profile } = useAuth();
-  const supabase = useMemo(() => createSupabaseClient(), []);
+  const supabase = useSupabase();
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allChemicalProducts, setAllChemicalProducts] = useState<ChemicalProduct[]>([]);
@@ -84,11 +85,39 @@ export default function LinhasPage() {
   }, []);
 
   // Carregar lançamentos quando mês/ano mudar
+  const loadExistingLaunches = useCallback(async () => {
+    if (!profile?.company_id || !selectedLineForLaunch) return;
+
+    const { data, error } = await supabase
+      .from('chemical_product_launches')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .eq('production_line_id', selectedLineForLaunch.id)
+      .eq('mes', selectedMonth)
+      .eq('ano', selectedYear);
+
+    if (error) {
+      logger.error('Erro ao carregar lançamentos:', error);
+      return;
+    }
+
+    const launches: Record<string, number> = {};
+    const consumptions: Record<string, number> = {};
+
+    data?.forEach((launch: ChemicalProductLaunch) => {
+      launches[launch.chemical_product_id] = launch.quantidade || 0;
+      consumptions[launch.chemical_product_id] = launch.consumo || 0;
+    });
+
+    setLaunchData(launches);
+    setConsumptionData(consumptions);
+  }, [profile?.company_id, selectedLineForLaunch, selectedMonth, selectedYear, supabase]);
+
   useEffect(() => {
     if (isLancamentoModalOpen && selectedLineForLaunch) {
       loadExistingLaunches();
     }
-  }, [selectedMonth, selectedYear, isLancamentoModalOpen, selectedLineForLaunch]);
+  }, [isLancamentoModalOpen, selectedLineForLaunch, loadExistingLaunches]);
 
   const loadData = async (retryCount = 0) => {
     try {
@@ -102,7 +131,7 @@ export default function LinhasPage() {
 
       // Carregar produtos químicos
       if (profile?.company_id) {
-        console.log('🔍 Carregando produtos químicos para company_id:', profile.company_id);
+        logger.log('Carregando produtos químicos para company_id:', profile.company_id);
         const { data: chemicalData, error: chemicalError } = await supabase
           .from('chemical_products')
           .select('*')
@@ -111,22 +140,21 @@ export default function LinhasPage() {
           .order('name');
 
         if (chemicalError) {
-          console.error('❌ Erro ao carregar produtos químicos:', chemicalError);
+          logger.error('Erro ao carregar produtos químicos:', chemicalError);
         } else {
-          console.log('✅ Produtos químicos carregados:', chemicalData?.length || 0);
-          console.log('📦 Dados:', chemicalData);
+          logger.log('Produtos químicos carregados:', chemicalData?.length || 0);
         }
 
         setAllChemicalProducts(chemicalData || []);
       } else {
-        console.warn('⚠️ Nenhum company_id encontrado no profile');
+        logger.warn('Nenhum company_id encontrado no profile');
       }
     } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
 
       // Retry automático em caso de erro de rede
       if (retryCount < 2) {
-        console.log(`Tentando reconectar (tentativa ${retryCount + 1}/2)...`);
+        logger.log(`Tentando reconectar (tentativa ${retryCount + 1}/2)...`);
         setTimeout(() => loadData(retryCount + 1), 2000);
         return;
       }
@@ -286,52 +314,21 @@ export default function LinhasPage() {
     }
   };
 
-  // Carregar lançamentos existentes do mês/ano selecionado
-  const loadExistingLaunches = async () => {
-    if (!profile?.company_id || !selectedLineForLaunch) return;
-
-    const { data, error } = await supabase
-      .from('chemical_product_launches')
-      .select('*')
-      .eq('company_id', profile.company_id)
-      .eq('production_line_id', selectedLineForLaunch.id)
-      .eq('mes', selectedMonth)
-      .eq('ano', selectedYear);
-
-    if (error) {
-      console.error('Erro ao carregar lançamentos:', error);
-      return;
-    }
-
-    // Preencher launchData e consumptionData com dados existentes
-    const launches: Record<string, number> = {};
-    const consumptions: Record<string, number> = {};
-
-    data?.forEach((launch: any) => {
-      launches[launch.chemical_product_id] = launch.quantidade || 0;
-      consumptions[launch.chemical_product_id] = launch.consumo || 0;
-    });
-
-    setLaunchData(launches);
-    setConsumptionData(consumptions);
-  };
 
   // --- Lançamento de Produtos Químicos ---
   const handleOpenLancamentoModal = async (linha: ProductionLine) => {
-    console.log('🔍 Abrindo modal para linha:', linha.name, 'ID:', linha.id);
+    logger.log('Abrindo modal para linha:', linha.name, 'ID:', linha.id);
 
     setSelectedLineForLaunch(linha);
     setSelectedMonth(currentMonth);
     setSelectedYear(currentYear);
     setLaunchData({});
     setConsumptionData({});
-    setChemicalProducts([]); // Limpa produtos anteriores
+    setChemicalProducts([]);
 
     // Carregar produtos químicos desta linha
     if (profile?.company_id) {
-      console.log('📦 Buscando produtos químicos...');
-      console.log('   - Company ID:', profile.company_id);
-      console.log('   - Production Line ID:', linha.id);
+      logger.log('Buscando produtos químicos para company_id:', profile.company_id, 'linha:', linha.id);
 
       const { data, error } = await supabase
         .from('chemical_products')
@@ -342,19 +339,18 @@ export default function LinhasPage() {
         .order('name');
 
       if (error) {
-        console.error('❌ Erro ao carregar produtos:', error);
+        logger.error('Erro ao carregar produtos:', error);
         alert('Erro ao carregar produtos químicos: ' + error.message);
       } else {
-        console.log('✅ Produtos encontrados:', data?.length || 0);
-        console.log('📋 Lista de produtos:', data);
+        logger.log('Produtos encontrados:', data?.length || 0);
         setChemicalProducts(data || []);
 
         if (!data || data.length === 0) {
-          console.warn('⚠️ Nenhum produto químico encontrado para esta linha!');
+          logger.warn('Nenhum produto químico encontrado para esta linha');
         }
       }
     } else {
-      console.error('❌ Profile não encontrado ou sem company_id');
+      logger.error('Profile não encontrado ou sem company_id');
     }
 
     setIsLancamentoModalOpen(true);
@@ -393,13 +389,12 @@ export default function LinhasPage() {
         });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('chemical_product_launches')
         .upsert(launches);
 
       if (error) {
-        console.error('Erro ao salvar lançamento:', error);
+        logger.error('Erro ao salvar lançamento:', error);
         throw error;
       }
 
@@ -407,7 +402,7 @@ export default function LinhasPage() {
       setIsLancamentoModalOpen(false);
       setLaunchData({});
     } catch (error) {
-      console.error('Erro ao salvar lançamentos:', error);
+      logger.error('Erro ao salvar lançamentos:', error);
       alert('Erro ao salvar lançamentos');
     } finally {
       setLaunchLoading(false);
@@ -452,12 +447,6 @@ export default function LinhasPage() {
             const isExpanded = expandedLines.has(linha.id);
             const lineProducts = getProductsByLine(linha.id);
             const lineChemicalProducts = getChemicalProductsByLine(linha.id);
-
-            if (isExpanded) {
-              console.log('🎨 Renderizando linha expandida:', linha.name);
-              console.log('📊 Produtos químicos desta linha:', lineChemicalProducts.length);
-              console.log('📋 Dados dos produtos químicos:', lineChemicalProducts);
-            }
 
             return (
               <div key={linha.id} className="bg-white rounded-lg border border-gray-200 shadow-sm">

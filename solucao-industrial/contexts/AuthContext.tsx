@@ -89,11 +89,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loadUserData = async () => {
-    // Mantido por compatibilidade
-    await loadUserSession();
-  };
-
   const signIn = async (email: string, password: string) => {
     // Chamar API route que usa service role key
     const response = await fetch('/api/auth/login', {
