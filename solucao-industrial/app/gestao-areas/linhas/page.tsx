@@ -328,7 +328,10 @@ export default function LinhasPage() {
 
     // Carregar produtos químicos desta linha
     if (profile?.company_id) {
-      logger.log('Buscando produtos químicos para company_id:', profile.company_id, 'linha:', linha.id);
+      logger.log('=== FILTRO DE PRODUTOS QUÍMICOS ===');
+      logger.log('Company ID:', profile.company_id);
+      logger.log('Linha ID:', linha.id);
+      logger.log('Linha Nome:', linha.name);
 
       const { data, error } = await supabase
         .from('chemical_products')
@@ -339,18 +342,28 @@ export default function LinhasPage() {
         .order('name');
 
       if (error) {
-        logger.error('Erro ao carregar produtos:', error);
+        logger.error('❌ Erro ao carregar produtos:', error);
         alert('Erro ao carregar produtos químicos: ' + error.message);
       } else {
-        logger.log('Produtos encontrados:', data?.length || 0);
-        setChemicalProducts(data || []);
+        logger.log('✅ Produtos encontrados:', data?.length || 0);
 
-        if (!data || data.length === 0) {
-          logger.warn('Nenhum produto químico encontrado para esta linha');
+        if (data && data.length > 0) {
+          logger.log('📦 Lista de produtos:');
+          data.forEach((p, i) => {
+            logger.log(`  ${i + 1}. ${p.name} (ID: ${p.id}, Linha: ${p.production_line_id})`);
+          });
+        } else {
+          logger.warn('⚠️ NENHUM produto químico encontrado!');
+          logger.warn('Possíveis causas:');
+          logger.warn('1. Produtos não foram vinculados à linha no banco');
+          logger.warn('2. production_line_id está NULL ou diferente');
+          logger.warn('3. Produtos estão com active = false');
         }
+
+        setChemicalProducts(data || []);
       }
     } else {
-      logger.error('Profile não encontrado ou sem company_id');
+      logger.error('❌ Profile não encontrado ou sem company_id');
     }
 
     setIsLancamentoModalOpen(true);
