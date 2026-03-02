@@ -54,6 +54,8 @@ export default function Sidebar() {
 
       if (!profile?.company_id) {
         console.warn('⚠️ Sidebar - Sem company_id no profile');
+        setCompanyName('Solução Industrial');
+        setCompanyLogo(null);
         return;
       }
 
@@ -74,14 +76,42 @@ export default function Sidebar() {
           setCompanyName(data.name || 'Solução Industrial');
           setCompanyLogo(data.logo_url);
           console.log('✅ Sidebar - Logo definido:', data.logo_url);
+          
+          // FORÇAR VERIFICAÇÃO
+          if (data.logo_url) {
+            console.log('🖼️ Sidebar - Testando URL da imagem:', data.logo_url);
+            // Testar se a URL é válida
+            const img = document.createElement('img');
+            img.onload = () => console.log('✅ Sidebar - Imagem carregou com sucesso!');
+            img.onerror = () => {
+              console.error('❌ Sidebar - Erro ao carregar imagem, URL pode estar inválida');
+              setCompanyLogo(null);
+            };
+            img.src = data.logo_url;
+          }
+        } else {
+          setCompanyName('Solução Industrial');
+          setCompanyLogo(null);
+          console.warn('⚠️ Sidebar - Usando dados padrão');
         }
       } catch (error) {
         console.error('❌ Erro ao buscar info da empresa:', error);
+        setCompanyName('Solução Industrial');
+        setCompanyLogo(null);
       }
     }
 
     fetchCompanyInfo();
   }, [profile, isClient]);
+
+  // Limpar dados da empresa ao fazer logout
+  React.useEffect(() => {
+    if (!profile) {
+      console.log('🧹 Sidebar - Limpando dados da empresa (logout)');
+      setCompanyName('Solução Industrial');
+      setCompanyLogo(null);
+    }
+  }, [profile]);
 
   const menuItems: MenuItem[] = [
     {
@@ -268,25 +298,17 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-dark-700">
         <div className="flex items-center justify-center">
-          {companyLogo ? (
-            <div className="w-32 h-24 relative">
-              <Image
-                src={companyLogo}
-                alt={companyName}
-                fill
-                className="object-contain"
-                unoptimized
-              />
-            </div>
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
-              <span className="text-white font-bold text-3xl">
-                {companyName.substring(0, 2).toUpperCase()}
-              </span>
-            </div>
-          )}
+          <div className="w-32 h-32 relative rounded-[20px] overflow-hidden">
+            <Image
+              src="/logos/bognar-logo.png"
+              alt={companyName}
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
         </div>
-        <h1 className="text-center text-white font-semibold mt-3">
+        <h1 className="text-center text-white font-semibold mt-3 text-sm">
           {companyName}
         </h1>
       </div>
