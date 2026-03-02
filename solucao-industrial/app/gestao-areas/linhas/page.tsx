@@ -446,7 +446,6 @@ export default function LinhasPage() {
           {linhas.map((linha) => {
             const isExpanded = expandedLines.has(linha.id);
             const lineProducts = getProductsByLine(linha.id);
-            const lineChemicalProducts = getChemicalProductsByLine(linha.id);
 
             return (
               <div key={linha.id} className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -517,31 +516,6 @@ export default function LinhasPage() {
                 {/* Expanded Products Table */}
                 {isExpanded && (
                   <div className="border-t border-gray-200">
-                    {/* Produtos Químicos */}
-                    {lineChemicalProducts.length > 0 && (
-                      <div className="p-4 bg-blue-50">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Produtos Químicos ({lineChemicalProducts.length})</h3>
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-blue-100 text-gray-700">
-                              <th className="text-left px-4 py-2 font-medium">Produto Químico</th>
-                              <th className="text-left px-4 py-2 font-medium">Preço Unitário</th>
-                              <th className="text-left px-4 py-2 font-medium">Unidade</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {lineChemicalProducts.map((product) => (
-                              <tr key={product.id} className="border-t border-blue-200 hover:bg-blue-100">
-                                <td className="px-4 py-2 text-gray-800">{product.name}</td>
-                                <td className="px-4 py-2 text-gray-800">{formatCurrency(product.unit_price)}</td>
-                                <td className="px-4 py-2 text-gray-600">{product.unit}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
                     {/* Produtos de Matéria-Prima */}
                     <div className="p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3">Produtos / Matéria-Prima ({lineProducts.length})</h3>
