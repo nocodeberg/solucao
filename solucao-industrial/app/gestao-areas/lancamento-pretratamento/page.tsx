@@ -34,6 +34,7 @@ export default function LancamentoPreTratamentoPage() {
 
   const [products, setProducts] = useState<ChemicalProduct[]>([]);
   const [productionLines, setProductionLines] = useState<ProductionLine[]>([]);
+  const [selectedLineId, setSelectedLineId] = useState<string>('');
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -69,26 +70,36 @@ export default function LancamentoPreTratamentoPage() {
         console.error('Erro ao carregar linhas:', linesError);
       } else {
         setProductionLines(linesData || []);
+        // Selecionar a primeira linha por padrão
+        if (linesData && linesData.length > 0 && !selectedLineId) {
+          setSelectedLineId(linesData[0].id);
+        }
       }
 
-      // Carregar produtos químicos
-      const { data, error } = await supabase
-        .from('chemical_products')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .eq('active', true)
-        .order('name');
+      // Carregar produtos químicos apenas da linha selecionada
+      if (selectedLineId) {
+        const { data, error } = await supabase
+          .from('chemical_products')
+          .select('*')
+          .eq('company_id', profile.company_id)
+          .eq('production_line_id', selectedLineId)
+          .eq('active', true)
+          .order('name');
 
-      if (error) {
-        console.error('Erro ao carregar produtos:', error);
-        return;
+        if (error) {
+          console.error('Erro ao carregar produtos:', error);
+          return;
+        }
+
+        setProducts(data || []);
+      } else {
+        // Se não há linha selecionada, não mostrar produtos
+        setProducts([]);
       }
-
-      setProducts(data || []);
     }
 
     loadData();
-  }, [profile?.company_id, supabase]);
+  }, [profile?.company_id, selectedLineId, supabase]);
 
   const handleOpenLaunchModal = () => {
     setIsLaunchModalOpen(true);
@@ -157,7 +168,7 @@ export default function LancamentoPreTratamentoPage() {
       name: '',
       unit_price: 0,
       unit: 'kg',
-      production_line_id: productionLines[0]?.id || '',
+      production_line_id: selectedLineId,
     });
     setProductFormErrors({});
     setIsProductModalOpen(true);
@@ -287,23 +298,46 @@ export default function LancamentoPreTratamentoPage() {
 
   return (
     <MainLayout title="Lançamento de Pré-Tratamento">
-      <div className="mb-6 flex gap-3">
-        {canCreate && (
-          <Button
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={handleCreateProduct}
+      <div className="mb-6">
+        {/* Seletor de Linha */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Linha de Produção
+          </label>
+          <select
+            value={selectedLineId}
+            onChange={(e) => setSelectedLineId(e.target.value)}
+            className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            Novo Produto Químico
+            <option value="">Selecione uma linha</option>
+            {productionLines.map((line) => (
+              <option key={line.id} value={line.id}>
+                {line.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-3">
+          {canCreate && (
+            <Button
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={handleCreateProduct}
+              disabled={!selectedLineId}
+            >
+              Novo Produto Químico
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={handleOpenLaunchModal}
+            disabled={!selectedLineId || products.length === 0}
+          >
+            Novo Lançamento
           </Button>
-        )}
-        <Button
-          variant="secondary"
-          icon={<Plus className="w-4 h-4" />}
-          onClick={handleOpenLaunchModal}
-        >
-          Novo Lançamento
-        </Button>
+        </div>
       </div>
 
       {/* Modal de Lançamento */}
@@ -505,11 +539,27 @@ export default function LancamentoPreTratamentoPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Produtos Químicos Cadastrados
+          {selectedLineId && (
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              - {productionLines.find(l => l.id === selectedLineId)?.name}
+            </span>
+          )}
         </h2>
-        {products.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
-            Nenhum produto químico cadastrado
-          </p>
+        
+        {!selectedLineId ? (
+          <div className="text-center py-8 text-gray-500">
+            <p className="mb-2">Selecione uma linha de produção para visualizar os produtos</p>
+            <p className="text-sm">Os produtos químicos são específicos para cada linha de produção</p>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p className="mb-2">Nenhum produto químico cadastrado para esta linha</p>
+            {canCreate && (
+              <p className="text-sm">
+                Clique em "Novo Produto Químico" para adicionar produtos à linha selecionada
+              </p>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

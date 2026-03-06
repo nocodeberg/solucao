@@ -317,7 +317,7 @@ export default function LinhasPage() {
 
   // --- Lançamento de Produtos Químicos ---
   const handleOpenLancamentoModal = async (linha: ProductionLine) => {
-    logger.log('Abrindo modal para linha:', linha.name, 'ID:', linha.id);
+    logger.log('🚀 Abrindo modal para linha:', linha.name, 'ID:', linha.id);
 
     setSelectedLineForLaunch(linha);
     setSelectedMonth(currentMonth);
@@ -328,11 +328,29 @@ export default function LinhasPage() {
 
     // Carregar produtos químicos desta linha
     if (profile?.company_id) {
-      logger.log('=== FILTRO DE PRODUTOS QUÍMICOS ===');
+      logger.log('=== 🔍 FILTRO DE PRODUTOS QUÍMICOS ===');
       logger.log('Company ID:', profile.company_id);
       logger.log('Linha ID:', linha.id);
       logger.log('Linha Nome:', linha.name);
 
+      // PRIMEIRO: Verificar todos os produtos da empresa (para debug)
+      const { data: todosProdutos, error: errorTodos } = await supabase
+        .from('chemical_products')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('active', true)
+        .order('name');
+
+      if (errorTodos) {
+        logger.error('❌ Erro ao carregar TODOS os produtos:', errorTodos);
+      } else {
+        logger.log('📊 TODOS os produtos da empresa:', todosProdutos?.length || 0);
+        todosProdutos?.forEach((p, i) => {
+          logger.log(`  ${i + 1}. ${p.name} (Linha: ${p.production_line_id || 'NULL'})`);
+        });
+      }
+
+      // SEGUNDO: Filtrar apenas produtos da linha específica
       const { data, error } = await supabase
         .from('chemical_products')
         .select('*')
@@ -342,25 +360,42 @@ export default function LinhasPage() {
         .order('name');
 
       if (error) {
-        logger.error('❌ Erro ao carregar produtos:', error);
+        logger.error('❌ Erro ao carregar produtos da linha:', error);
         alert('Erro ao carregar produtos químicos: ' + error.message);
       } else {
-        logger.log('✅ Produtos encontrados:', data?.length || 0);
+        logger.log('✅ Produtos da linha encontrados:', data?.length || 0);
 
         if (data && data.length > 0) {
-          logger.log('📦 Lista de produtos:');
+          logger.log('📦 Produtos da linha selecionada:');
           data.forEach((p, i) => {
             logger.log(`  ${i + 1}. ${p.name} (ID: ${p.id}, Linha: ${p.production_line_id})`);
           });
         } else {
-          logger.warn('⚠️ NENHUM produto químico encontrado!');
-          logger.warn('Possíveis causas:');
-          logger.warn('1. Produtos não foram vinculados à linha no banco');
-          logger.warn('2. production_line_id está NULL ou diferente');
-          logger.warn('3. Produtos estão com active = false');
+          logger.warn('⚠️ NENHUM produto encontrado para esta linha!');
+          logger.warn('Verificando se há produtos sem linha...');
+          
+          const produtosSemLinha = todosProdutos?.filter(p => !p.production_line_id);
+          if (produtosSemLinha && produtosSemLinha.length > 0) {
+            logger.warn(`🚨 ENCONTRADOS ${produtosSemLinha.length} PRODUTOS SEM LINHA!`);
+            logger.warn('Esses produtos podem estar aparecendo no modal.');
+            produtosSemLinha.forEach((p, i) => {
+              logger.warn(`  ${i + 1}. ${p.name} (ID: ${p.id})`);
+            });
+          }
         }
 
         setChemicalProducts(data || []);
+        logger.log(`🎯 SetChemicalProducts chamado com ${data?.length || 0} produtos`);
+        
+        // FORÇAR ATUALIZAÇÃO DO ESTADO
+        setTimeout(() => {
+          logger.log('🔄 Verificando estado após atualização...');
+          logger.log('chemicalProducts.length:', chemicalProducts.length);
+          logger.log('selectedLineForLaunch:', selectedLineForLaunch?.name);
+          
+          // FORÇAR RENDERIZAÇÃO
+          setChemicalProducts([...(data || [])]);
+        }, 100);
       }
     } else {
       logger.error('❌ Profile não encontrado ou sem company_id');
@@ -751,7 +786,16 @@ export default function LinhasPage() {
           {/* Tabela de Produtos Químicos */}
           {chemicalProducts.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              Nenhum produto químico cadastrado para esta linha
+              <p className="text-lg font-medium mb-2">Nenhum produto químico cadastrado para esta linha</p>
+              <p className="text-sm mb-4">
+                Linha: <span className="font-semibold">{selectedLineForLaunch?.name}</span>
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-blue-800">
+                  <strong>Solução:</strong> Cadastre produtos químicos específicos para esta linha 
+                  na página de "Lançamento de Pré-Tratamento"
+                </p>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
