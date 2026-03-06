@@ -46,12 +46,12 @@ export default function LoginPage() {
         <div className="relative z-10 text-center text-white max-w-lg">
           {/* Logo grande */}
           <div className="mb-8 flex justify-center">
-            <div className="relative w-48 h-48 rounded-3xl bg-white/10 backdrop-blur-sm p-8 shadow-2xl">
+            <div className="relative w-56 h-56">
               <Image
-                src="/logos/bognar-logo.png"
+                src="/logos/solucao-industrial-prata.png"
                 alt="Solução Industrial"
                 fill
-                className="object-contain p-6"
+                className="object-contain"
                 priority
               />
             </div>
