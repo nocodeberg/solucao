@@ -76,13 +76,15 @@ export async function GET(request: NextRequest) {
     );
 
     // Buscar profile com service role (sem RLS) - com retry e timeout
-    const { data: profile, error: profileError } = await withRetry(() =>
-      supabaseAdmin
+    const profileResult = await withRetry(async () => {
+      return await supabaseAdmin
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
-    );
+        .single();
+    });
+
+    const { data: profile, error: profileError } = profileResult;
 
     if (profileError || !profile) {
       return NextResponse.json(

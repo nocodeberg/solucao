@@ -15,6 +15,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createSupabaseClient(), []);
 
   return (
+    // @ts-expect-error - Supabase client type compatibility issue
     <SupabaseContext.Provider value={{ supabase }}>
       {children}
     </SupabaseContext.Provider>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import Toggle from '@/components/ui/Toggle';
@@ -357,6 +357,7 @@ export default function LinhasPage() {
 
       const { error } = await supabase
         .from('product_launches')
+        // @ts-expect-error - Supabase type inference issue with upsert
         .upsert(launches);
 
       if (error) {
@@ -717,7 +718,7 @@ export default function LinhasPage() {
                   <li>2. Expanda a linha <strong className="text-blue-900">{selectedLineForLaunch?.name}</strong> clicando na seta</li>
                   <li>3. Clique em <strong className="text-blue-900">+ Novo produto</strong></li>
                   <li>4. Preencha o nome e o valor do produto</li>
-                  <li>5. Salve e clique novamente em "Realizar lançamento de Linha"</li>
+                  <li>5. Salve e clique novamente em &quot;Realizar lançamento de Linha&quot;</li>
                 </ol>
               </div>
             </div>

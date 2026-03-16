@@ -35,7 +35,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(['gestao-areas', 'rh']);
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('Solução Industrial');
   const [isClient, setIsClient] = useState(false);
 

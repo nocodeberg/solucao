@@ -69,10 +69,11 @@ export default function LancamentoPreTratamentoPage() {
       if (linesError) {
         console.error('Erro ao carregar linhas:', linesError);
       } else {
-        setProductionLines(linesData || []);
+        const lines = (linesData || []) as ProductionLine[];
+        setProductionLines(lines);
         // Selecionar a primeira linha por padrão
-        if (linesData && linesData.length > 0 && !selectedLineId) {
-          setSelectedLineId(linesData[0].id);
+        if (lines.length > 0 && !selectedLineId) {
+          setSelectedLineId(lines[0].id);
         }
       }
 
@@ -143,6 +144,7 @@ export default function LancamentoPreTratamentoPage() {
 
       const { error } = await supabase
         .from('chemical_product_launches')
+        // @ts-expect-error - Supabase type inference issue with upsert
         .upsert(launches);
 
       if (error) {
@@ -198,10 +200,12 @@ export default function LancamentoPreTratamentoPage() {
       if (error) throw error;
 
       // Recarregar produtos
+      if (!profile?.company_id) return;
+
       const { data } = await supabase
         .from('chemical_products')
         .select('*')
-        .eq('company_id', profile?.company_id)
+        .eq('company_id', profile.company_id)
         .eq('active', true)
         .order('name');
 
@@ -239,6 +243,7 @@ export default function LancamentoPreTratamentoPage() {
         // Atualizar
         const { error } = await supabase
           .from('chemical_products')
+          // @ts-expect-error - Supabase type inference issue
           .update({
             name: productForm.name,
             unit_price: productForm.unit_price,
@@ -252,6 +257,7 @@ export default function LancamentoPreTratamentoPage() {
         // Criar
         const { error } = await supabase
           .from('chemical_products')
+          // @ts-expect-error - Supabase type inference issue
           .insert({
             company_id: profile.company_id,
             name: productForm.name,
@@ -283,7 +289,7 @@ export default function LancamentoPreTratamentoPage() {
     }
   };
 
-  const getLineName = (lineId: string | null) => {
+  const getLineName = (lineId: string | null | undefined) => {
     if (!lineId) return 'Sem linha';
     const line = productionLines.find(l => l.id === lineId);
     return line?.name || 'Linha não encontrada';
@@ -556,7 +562,7 @@ export default function LancamentoPreTratamentoPage() {
             <p className="mb-2">Nenhum produto químico cadastrado para esta linha</p>
             {canCreate && (
               <p className="text-sm">
-                Clique em "Novo Produto Químico" para adicionar produtos à linha selecionada
+                Clique em &quot;Novo Produto Químico&quot; para adicionar produtos à linha selecionada
               </p>
             )}
           </div>
