@@ -10,7 +10,7 @@ import { Pencil, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { api } from '@/lib/api/client';
-import { ProductionLine, Product, LineType, ChemicalProduct, ChemicalProductLaunch } from '@/types/database.types';
+import { ProductionLine, Product, LineType, ProductLaunch } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 
@@ -50,14 +50,13 @@ export default function LinhasPage() {
   const supabase = useSupabase();
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [allChemicalProducts, setAllChemicalProducts] = useState<ChemicalProduct[]>([]);
   const [expandedLines, setExpandedLines] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   // Estados para o modal de lançamento
   const [isLancamentoModalOpen, setIsLancamentoModalOpen] = useState(false);
   const [selectedLineForLaunch, setSelectedLineForLaunch] = useState<ProductionLine | null>(null);
-  const [chemicalProducts, setChemicalProducts] = useState<ChemicalProduct[]>([]);
+  const [lineProducts, setLineProducts] = useState<Product[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [launchData, setLaunchData] = useState<Record<string, number>>({});
@@ -89,7 +88,7 @@ export default function LinhasPage() {
     if (!profile?.company_id || !selectedLineForLaunch) return;
 
     const { data, error } = await supabase
-      .from('chemical_product_launches')
+      .from('product_launches')
       .select('*')
       .eq('company_id', profile.company_id)
       .eq('production_line_id', selectedLineForLaunch.id)
@@ -104,9 +103,9 @@ export default function LinhasPage() {
     const launches: Record<string, number> = {};
     const consumptions: Record<string, number> = {};
 
-    data?.forEach((launch: ChemicalProductLaunch) => {
-      launches[launch.chemical_product_id] = launch.quantidade || 0;
-      consumptions[launch.chemical_product_id] = launch.consumo || 0;
+    data?.forEach((launch: ProductLaunch) => {
+      launches[launch.product_id] = launch.quantidade || 0;
+      consumptions[launch.product_id] = launch.consumo || 0;
     });
 
     setLaunchData(launches);
@@ -128,27 +127,6 @@ export default function LinhasPage() {
       ]);
       setLinhas(linhasData);
       setAllProducts(productsData);
-
-      // Carregar produtos químicos
-      if (profile?.company_id) {
-        logger.log('Carregando produtos químicos para company_id:', profile.company_id);
-        const { data: chemicalData, error: chemicalError } = await supabase
-          .from('chemical_products')
-          .select('*')
-          .eq('company_id', profile.company_id)
-          .eq('active', true)
-          .order('name');
-
-        if (chemicalError) {
-          logger.error('Erro ao carregar produtos químicos:', chemicalError);
-        } else {
-          logger.log('Produtos químicos carregados:', chemicalData?.length || 0);
-        }
-
-        setAllChemicalProducts(chemicalData || []);
-      } else {
-        logger.warn('Nenhum company_id encontrado no profile');
-      }
     } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
 
@@ -174,9 +152,6 @@ export default function LinhasPage() {
 
   const getProductsByLine = (lineId: string) =>
     allProducts.filter((p) => p.production_line_id === lineId);
-
-  const getChemicalProductsByLine = (lineId: string) =>
-    allChemicalProducts.filter((p) => p.production_line_id === lineId);
 
   const toggleExpand = (lineId: string) => {
     setExpandedLines((prev) => {
@@ -315,92 +290,35 @@ export default function LinhasPage() {
   };
 
 
-  // --- Lançamento de Produtos Químicos ---
+  // --- Lançamento de Produtos de Matéria-Prima ---
   const handleOpenLancamentoModal = async (linha: ProductionLine) => {
-    logger.log('🚀 Abrindo modal para linha:', linha.name, 'ID:', linha.id);
+    logger.log('🚀 Abrindo modal de lançamento para linha:', linha.name, 'ID:', linha.id);
 
+    // RESET COMPLETO DO ESTADO ANTES DE ABRIR
+    setLineProducts([]);
+    setLaunchData({});
+    setConsumptionData({});
     setSelectedLineForLaunch(linha);
     setSelectedMonth(currentMonth);
     setSelectedYear(currentYear);
-    setLaunchData({});
-    setConsumptionData({});
-    setChemicalProducts([]);
 
-    // Carregar produtos químicos desta linha
-    if (profile?.company_id) {
-      logger.log('=== 🔍 FILTRO DE PRODUTOS QUÍMICOS ===');
-      logger.log('Company ID:', profile.company_id);
-      logger.log('Linha ID:', linha.id);
-      logger.log('Linha Nome:', linha.name);
+    // Buscar produtos de matéria-prima desta linha
+    const produtos = allProducts.filter(p => p.production_line_id === linha.id);
 
-      // PRIMEIRO: Verificar todos os produtos da empresa (para debug)
-      const { data: todosProdutos, error: errorTodos } = await supabase
-        .from('chemical_products')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .eq('active', true)
-        .order('name');
+    logger.log('=== 📦 PRODUTOS DE MATÉRIA-PRIMA ===');
+    logger.log('Linha:', linha.name);
+    logger.log('Total de produtos:', produtos.length);
 
-      if (errorTodos) {
-        logger.error('❌ Erro ao carregar TODOS os produtos:', errorTodos);
-      } else {
-        logger.log('📊 TODOS os produtos da empresa:', todosProdutos?.length || 0);
-        todosProdutos?.forEach((p, i) => {
-          logger.log(`  ${i + 1}. ${p.name} (Linha: ${p.production_line_id || 'NULL'})`);
-        });
-      }
-
-      // SEGUNDO: Filtrar apenas produtos da linha específica
-      const { data, error } = await supabase
-        .from('chemical_products')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .eq('production_line_id', linha.id)
-        .eq('active', true)
-        .order('name');
-
-      if (error) {
-        logger.error('❌ Erro ao carregar produtos da linha:', error);
-        alert('Erro ao carregar produtos químicos: ' + error.message);
-      } else {
-        logger.log('✅ Produtos da linha encontrados:', data?.length || 0);
-
-        if (data && data.length > 0) {
-          logger.log('📦 Produtos da linha selecionada:');
-          data.forEach((p, i) => {
-            logger.log(`  ${i + 1}. ${p.name} (ID: ${p.id}, Linha: ${p.production_line_id})`);
-          });
-        } else {
-          logger.warn('⚠️ NENHUM produto encontrado para esta linha!');
-          logger.warn('Verificando se há produtos sem linha...');
-          
-          const produtosSemLinha = todosProdutos?.filter(p => !p.production_line_id);
-          if (produtosSemLinha && produtosSemLinha.length > 0) {
-            logger.warn(`🚨 ENCONTRADOS ${produtosSemLinha.length} PRODUTOS SEM LINHA!`);
-            logger.warn('Esses produtos podem estar aparecendo no modal.');
-            produtosSemLinha.forEach((p, i) => {
-              logger.warn(`  ${i + 1}. ${p.name} (ID: ${p.id})`);
-            });
-          }
-        }
-
-        setChemicalProducts(data || []);
-        logger.log(`🎯 SetChemicalProducts chamado com ${data?.length || 0} produtos`);
-        
-        // FORÇAR ATUALIZAÇÃO DO ESTADO
-        setTimeout(() => {
-          logger.log('🔄 Verificando estado após atualização...');
-          logger.log('chemicalProducts.length:', chemicalProducts.length);
-          logger.log('selectedLineForLaunch:', selectedLineForLaunch?.name);
-          
-          // FORÇAR RENDERIZAÇÃO
-          setChemicalProducts([...(data || [])]);
-        }, 100);
-      }
+    if (produtos.length > 0) {
+      logger.log('Produtos encontrados:');
+      produtos.forEach((p, i) => {
+        logger.log(`  ${i + 1}. ${p.name} - R$ ${p.price}`);
+      });
     } else {
-      logger.error('❌ Profile não encontrado ou sem company_id');
+      logger.warn('⚠️ Nenhum produto cadastrado para esta linha');
     }
 
+    setLineProducts(produtos);
     setIsLancamentoModalOpen(true);
   };
 
@@ -419,26 +337,26 @@ export default function LinhasPage() {
     try {
       const launches = [];
 
-      for (const product of chemicalProducts) {
+      for (const product of lineProducts) {
         const quantidade = launchData[product.id] || 0;
-        const custo_total = quantidade * product.unit_price;
+        const custo_total = quantidade * product.price;
 
         launches.push({
           company_id: profile.company_id,
-          chemical_product_id: product.id,
+          product_id: product.id,
           production_line_id: selectedLineForLaunch.id,
           mes: selectedMonth,
           ano: selectedYear,
           quantidade,
           consumo: 0,
-          custo_unitario: product.unit_price,
+          custo_unitario: product.price,
           custo_total,
           created_by: profile.id,
         });
       }
 
       const { error } = await supabase
-        .from('chemical_product_launches')
+        .from('product_launches')
         .upsert(launches);
 
       if (error) {
@@ -762,7 +680,7 @@ export default function LinhasPage() {
       <Modal
         isOpen={isLancamentoModalOpen}
         onClose={() => setIsLancamentoModalOpen(false)}
-        title={selectedLineForLaunch ? `Lançamento de Pré-Tratamento - ${selectedLineForLaunch.name}` : 'Lançamento de Pré-Tratamento'}
+        title={selectedLineForLaunch ? `Lançamento de ${selectedLineForLaunch.line_type === 'VERNIZ' ? 'Verniz' : 'Galvanoplastia'} - ${selectedLineForLaunch.name}` : 'Lançamento de Linha'}
         size="xl"
       >
         <div className="space-y-6">
@@ -783,18 +701,24 @@ export default function LinhasPage() {
             ))}
           </div>
 
-          {/* Tabela de Produtos Químicos */}
-          {chemicalProducts.length === 0 ? (
+          {/* Tabela de Produtos de Matéria-Prima */}
+          {lineProducts.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <p className="text-lg font-medium mb-2">Nenhum produto químico cadastrado para esta linha</p>
+              <p className="text-lg font-medium mb-2">Nenhum produto cadastrado para esta linha</p>
               <p className="text-sm mb-4">
                 Linha: <span className="font-semibold">{selectedLineForLaunch?.name}</span>
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-                <p className="text-sm text-blue-800">
-                  <strong>Solução:</strong> Cadastre produtos químicos específicos para esta linha 
-                  na página de "Lançamento de Pré-Tratamento"
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-lg mx-auto">
+                <p className="text-sm text-blue-900 mb-3">
+                  <strong>Como cadastrar produtos para esta linha:</strong>
                 </p>
+                <ol className="text-left text-sm text-blue-800 space-y-2">
+                  <li>1. Feche este modal</li>
+                  <li>2. Expanda a linha <strong className="text-blue-900">{selectedLineForLaunch?.name}</strong> clicando na seta</li>
+                  <li>3. Clique em <strong className="text-blue-900">+ Novo produto</strong></li>
+                  <li>4. Preencha o nome e o valor do produto</li>
+                  <li>5. Salve e clique novamente em "Realizar lançamento de Linha"</li>
+                </ol>
               </div>
             </div>
           ) : (
@@ -812,7 +736,7 @@ export default function LinhasPage() {
                       Consumo
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
-                      Custo/kg
+                      Valor Unitário
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
                       Custo Total
@@ -820,10 +744,10 @@ export default function LinhasPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {chemicalProducts.map((product) => {
+                  {lineProducts.map((product) => {
                     const quantidade = launchData[product.id] || 0;
                     const consumo = consumptionData[product.id] || 0;
-                    const custoTotal = quantidade * product.unit_price;
+                    const custoTotal = quantidade * product.price;
 
                     return (
                       <tr key={product.id} className="hover:bg-gray-50">
@@ -847,7 +771,7 @@ export default function LinhasPage() {
                           {consumo > 0 ? consumo.toFixed(2) : '-'}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-gray-900">
-                          {formatCurrency(product.unit_price)}
+                          {formatCurrency(product.price)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
                           {formatCurrency(custoTotal)}
@@ -870,7 +794,7 @@ export default function LinhasPage() {
             </button>
             <button
               onClick={handleSaveLaunches}
-              disabled={launchLoading || chemicalProducts.length === 0}
+              disabled={launchLoading || lineProducts.length === 0}
               className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {launchLoading ? 'Salvando...' : 'Salvar Lançamentos'}

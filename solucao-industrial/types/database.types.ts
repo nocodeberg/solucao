@@ -89,6 +89,12 @@ export interface Database {
         Update: Partial<Omit<ChemicalProductLaunch, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      product_launches: {
+        Row: ProductLaunch;
+        Insert: Omit<ProductLaunch, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<ProductLaunch, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -290,6 +296,23 @@ export interface ChemicalProductLaunch {
   id: string;
   company_id: string;
   chemical_product_id: string;
+  production_line_id?: string;
+  mes: number;
+  ano: number;
+  quantidade: number;
+  consumo: number;
+  custo_unitario: number;
+  custo_total: number;
+  observacao?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductLaunch {
+  id: string;
+  company_id: string;
+  product_id: string;
   production_line_id?: string;
   mes: number;
   ano: number;
