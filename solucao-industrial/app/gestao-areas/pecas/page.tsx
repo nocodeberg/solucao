@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -8,7 +8,7 @@ import { FormModal } from '@/components/ui/Modal';
 import Select, { SelectOption } from '@/components/ui/Select';
 import { Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { Piece, Group } from '@/types/database.types';
 
 interface PecaFormData {
@@ -20,7 +20,7 @@ interface PecaFormData {
 }
 
 export default function PecasPage() {
-  const { canCreate } = useAuth();
+  const { canCreate, user, loading: authLoading } = useAuth();
   const [pecas, setPecas] = useState<Piece[]>([]);
   const [grupos, setGrupos] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,26 +35,38 @@ export default function PecasPage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof PecaFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const loadData = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadData = async () => {
     try {
       setLoading(true);
       const [pecasData, gruposData] = await Promise.all([
-        api.pieces.list(),
-        api.groups.list(),
+        apiComplete.pieces.list(),
+        apiComplete.groups.list(),
       ]);
       setPecas(pecasData);
       setGrupos(gruposData);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar dados';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [authLoading, user, loadData]);
 
   const handleCreate = () => {
     setFormData({ name: '', group_id: '', area_dm2: 0, weight_kg: 0, production_type: '' });
@@ -76,7 +88,7 @@ export default function PecasPage() {
 
     try {
       setSubmitLoading(true);
-      await api.pieces.create(formData);
+      await apiComplete.pieces.create(formData);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -9,7 +9,7 @@ import DatePicker from '@/components/ui/DatePicker';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, Droplets } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { ConsumoAgua } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -21,7 +21,7 @@ interface ConsumoAguaFormData {
 }
 
 export default function ConsumoAguaPage() {
-  const { canCreate } = useAuth();
+  const { canCreate, user, loading: authLoading } = useAuth();
   const [registros, setRegistros] = useState<ConsumoAgua[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,22 +34,34 @@ export default function ConsumoAguaPage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof ConsumoAguaFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const loadData = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await api.consumoAgua.list();
+      const data = await apiComplete.consumoAgua.list();
       setRegistros(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar dados';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [authLoading, user, loadData]);
 
   const handleCreate = () => {
     setFormData({
@@ -76,7 +88,7 @@ export default function ConsumoAguaPage() {
 
     try {
       setSubmitLoading(true);
-      await api.consumoAgua.create(formData);
+      await apiComplete.consumoAgua.create(formData);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {

@@ -44,11 +44,25 @@ export async function POST(request: NextRequest) {
     );
 
     // Buscar profile com service role (sem RLS)
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profiles, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('id', authData.user.id)
-      .single();
+      .limit(1);
+
+    let profile = profiles?.[0] || null;
+
+    if (!profile && authData.user.email) {
+      const { data: fallbackProfiles, error: fallbackError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('email', authData.user.email)
+        .limit(1);
+
+      if (!fallbackError) {
+        profile = fallbackProfiles?.[0] || null;
+      }
+    }
 
     if (profileError || !profile) {
       return NextResponse.json(

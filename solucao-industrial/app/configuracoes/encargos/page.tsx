@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
 import { FormModal } from '@/components/ui/Modal';
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { Encargo } from '@/types/database.types';
 
 interface EncargoFormData {
@@ -17,7 +17,7 @@ interface EncargoFormData {
 }
 
 export default function EncargosPage() {
-  const { canCreate, canEdit, canDelete } = useAuth();
+  const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
   const [encargos, setEncargos] = useState<Encargo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,22 +30,34 @@ export default function EncargosPage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof EncargoFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadEncargos();
-  }, []);
+  const loadEncargos = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadEncargos = async () => {
     try {
       setLoading(true);
-      const data = await api.encargos.list();
+      const data = await apiComplete.encargos.list();
       setEncargos(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar encargos:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar encargos';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar encargos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadEncargos();
+  }, [authLoading, user, loadEncargos]);
 
   const handleCreate = () => {
     setEditingEncargo(null);
@@ -71,7 +83,7 @@ export default function EncargosPage() {
     }
 
     try {
-      await api.encargos.delete(encargo.id);
+      await apiComplete.encargos.delete(encargo.id);
       await loadEncargos();
     } catch (error: unknown) {
       console.error('Erro ao excluir encargo:', error);
@@ -102,9 +114,9 @@ export default function EncargosPage() {
       setSubmitLoading(true);
 
       if (editingEncargo) {
-        await api.encargos.update(editingEncargo.id, formData);
+        await apiComplete.encargos.update(editingEncargo.id, formData);
       } else {
-        await api.encargos.create(formData);
+        await apiComplete.encargos.create(formData);
       }
 
       setIsModalOpen(false);

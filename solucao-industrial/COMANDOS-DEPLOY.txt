@@ -1,0 +1,66 @@
+🚀 COMANDOS PARA DEPLOY - COPIE E COLE NO TERMINAL
+
+==================================================
+OPÇÃO 1: PowerShell (Recomendado)
+==================================================
+Execute no PowerShell:
+.\deploy-final.ps1
+
+==================================================
+OPÇÃO 2: Comandos Manuais
+==================================================
+Copie e cole um por vez:
+
+# 1. Limpar build
+rmdir /s /q .next
+
+# 2. Instalar dependências
+npm install --force
+
+# 3. Build
+npm run build
+
+# 4. Instalar Vercel (se necessário)
+npm install -g vercel
+
+# 5. Deploy
+vercel --prod
+
+==================================================
+OPÇÃO 3: CMD (Prompt de Comando)
+==================================================
+Execute no CMD:
+deploy-now.bat
+
+==================================================
+VARIÁVEIS DE AMBIENTE NECESSÁRIAS
+==================================================
+No Vercel, configure:
+- NEXT_PUBLIC_SUPABASE_URL=https://SEU_PROJETO.supabase.co
+- NEXT_PUBLIC_SUPABASE_ANON_KEY=SUA_CHAVE_ANON
+- SUPABASE_SERVICE_ROLE_KEY=SUA_CHAVE_SERVICE
+
+==================================================
+O QUE FOI CORRIGIDO
+==================================================
+✅ Erro de conexão resolvido
+✅ API Supabase implementada
+✅ Páginas principais migradas
+✅ "Cromo de Galvonoplastia" adicionado
+✅ Build otimizado
+
+==================================================
+FUNCIONALIDADES TESTAR
+==================================================
+1. Login
+2. Grupos (+ Cromo de Galvonoplastia)
+3. Linhas de Produção
+4. Funcionários
+5. Dashboard
+
+==================================================
+SE DER ERRO
+==================================================
+1. Verifique se as variáveis de ambiente estão configuradas
+2. Teste no console do navegador (F12)
+3. Verifique aba Network para erros de API

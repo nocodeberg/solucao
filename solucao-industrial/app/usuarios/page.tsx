@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { FormModal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { Profile, UserRole } from '@/types/database.types';
 import { UserCircle, Mail, Shield, Pencil, Trash2, Key, Plus } from 'lucide-react';
 import Toggle from '@/components/ui/Toggle';
@@ -51,7 +51,7 @@ interface ResetPasswordFormData {
 }
 
 export default function UsuariosPage() {
-  const { profile } = useAuth();
+  const { profile, user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,22 +78,34 @@ export default function UsuariosPage() {
   const [resetPasswordErrors, setResetPasswordErrors] = useState<Partial<Record<keyof ResetPasswordFormData, string>>>({});
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  const loadUsers = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadUsers = async () => {
     try {
       setLoading(true);
-      const data = await api.users.list();
+      const data = await apiComplete.users.list();
       setUsers(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar usuários:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar usuários';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar usuários');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadUsers();
+  }, [authLoading, user, loadUsers]);
 
   const handleCreateUser = () => {
     setEditingUser(null);
@@ -142,7 +154,7 @@ export default function UsuariosPage() {
     if (!confirm(`Tem certeza que deseja excluir o usuário "${user.full_name}"?`)) return;
 
     try {
-      await api.users.delete(user.id);
+      await apiComplete.users.delete(user.id);
       await loadUsers();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao excluir usuário';
@@ -179,13 +191,13 @@ export default function UsuariosPage() {
     try {
       setUserSubmitLoading(true);
       if (editingUser) {
-        await api.users.update(editingUser.id, {
+        await apiComplete.users.update(editingUser.id, {
           full_name: userForm.full_name,
           role: userForm.role,
           active: userForm.active,
         });
       } else {
-        await api.users.create(userForm);
+        await apiComplete.users.create(userForm);
       }
       handleCloseUserModal();
       await loadUsers();
@@ -204,7 +216,7 @@ export default function UsuariosPage() {
     }
 
     try {
-      await api.users.update(user.id, { active: !user.active });
+      await apiComplete.users.update(user.id, { active: !user.active });
       await loadUsers();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao atualizar usuário';
@@ -256,7 +268,7 @@ export default function UsuariosPage() {
 
     try {
       setResetPasswordLoading(true);
-      await api.users.resetPassword(resetPasswordUser.id, resetPasswordForm.new_password);
+      await apiComplete.users.resetPassword(resetPasswordUser.id, resetPasswordForm.new_password);
       handleCloseResetPasswordModal();
       alert('Senha resetada com sucesso');
     } catch (error: unknown) {

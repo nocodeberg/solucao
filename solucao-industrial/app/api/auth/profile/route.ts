@@ -81,10 +81,25 @@ export async function GET(request: NextRequest) {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .limit(1);
     });
 
-    const { data: profile, error: profileError } = profileResult;
+    const { data: profiles, error: profileError } = profileResult;
+    let profile = profiles?.[0] || null;
+
+    if (!profile && user.email) {
+      const fallbackResult = await withRetry(async () => {
+        return await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('email', user.email)
+          .limit(1);
+      });
+
+      if (!fallbackResult.error) {
+        profile = fallbackResult.data?.[0] || null;
+      }
+    }
 
     if (profileError || !profile) {
       return NextResponse.json(

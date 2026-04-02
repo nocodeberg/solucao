@@ -63,11 +63,13 @@ export default function Sidebar() {
         const { createSupabaseClient } = await import('@/lib/supabase/client');
         const supabase = createSupabaseClient();
 
-        const { data, error } = await supabase
+        const { data: rows, error } = await supabase
           .from('companies')
           .select('name, logo_url')
           .eq('id', profile.company_id)
-          .single<{ name: string; logo_url: string | null }>();
+          .limit(1);
+
+        const data = (rows as { name: string; logo_url: string | null }[] | null)?.[0] ?? null;
 
         console.log('📊 Sidebar - Dados da empresa:', data);
         console.log('❌ Sidebar - Erro:', error);

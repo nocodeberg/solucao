@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
 import { FormModal } from '@/components/ui/Modal';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { Cargo } from '@/types/database.types';
 
 interface CargoFormData {
@@ -16,7 +16,7 @@ interface CargoFormData {
 }
 
 export default function CargosPage() {
-  const { canCreate, canEdit, canDelete } = useAuth();
+  const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,22 +28,34 @@ export default function CargosPage() {
   const [formErrors, setFormErrors] = useState<Partial<CargoFormData>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadCargos();
-  }, []);
+  const loadCargos = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadCargos = async () => {
     try {
       setLoading(true);
-      const data = await api.cargos.list();
+      const data = await apiComplete.cargos.list();
       setCargos(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar cargos:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar cargos';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar cargos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadCargos();
+  }, [authLoading, user, loadCargos]);
 
   const handleCreate = () => {
     setEditingCargo(null);
@@ -68,7 +80,7 @@ export default function CargosPage() {
     }
 
     try {
-      await api.cargos.delete(cargo.id);
+      await apiComplete.cargos.delete(cargo.id);
       await loadCargos();
     } catch (error: unknown) {
       console.error('Erro ao excluir cargo:', error);
@@ -95,9 +107,9 @@ export default function CargosPage() {
       setSubmitLoading(true);
 
       if (editingCargo) {
-        await api.cargos.update(editingCargo.id, formData);
+        await apiComplete.cargos.update(editingCargo.id, formData);
       } else {
-        await api.cargos.create(formData);
+        await apiComplete.cargos.create(formData);
       }
 
       setIsModalOpen(false);

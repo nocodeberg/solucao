@@ -9,7 +9,7 @@ import Modal from '@/components/ui/Modal';
 import { Pencil, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabase } from '@/contexts/SupabaseContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { ProductionLine, Product, LineType, ProductLaunch } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 import { logger } from '@/lib/logger';
@@ -46,7 +46,7 @@ const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
 
 export default function LinhasPage() {
-  const { canCreate, canEdit, canDelete, profile } = useAuth();
+  const { canCreate, canEdit, canDelete, profile, user, loading: authLoading } = useAuth();
   const supabase = useSupabase();
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -78,10 +78,55 @@ export default function LinhasPage() {
   const [produtoFormErrors, setProdutoFormErrors] = useState<Partial<Record<keyof ProductFormData, string>>>({});
   const [produtoSubmitLoading, setProdutoSubmitLoading] = useState(false);
 
+  const loadData = useCallback(async (retryCount = 0) => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const [linhasData, productsData] = await Promise.all([
+        apiComplete.productionLines.list(),
+        apiComplete.products.list(),
+      ]);
+      setLinhas(linhasData);
+      setAllProducts(productsData);
+    } catch (error: unknown) {
+      console.error('Erro ao carregar dados:', error);
+
+      if (retryCount < 2) {
+        logger.log(`Tentando reconectar (tentativa ${retryCount + 1}/2)...`);
+        setTimeout(() => loadData(retryCount + 1), 2000);
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+
+      if (message.includes('Usuário não autenticado')) {
+        logger.warn('Sessão ainda não pronta para carregar dados.');
+        return;
+      }
+
+      if (message.includes('Failed to fetch') || message.includes('Network') || message.includes('503')) {
+        alert('❌ Erro de conexão\n\nNão foi possível conectar ao servidor. Verifique:\n• Sua conexão com a internet\n• Se o servidor está rodando\n\nTentando reconectar automaticamente...');
+      } else {
+        alert('Erro ao carregar dados: ' + message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [authLoading, user]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     loadData();
-  }, []);
+  }, [authLoading, user, loadData]);
 
   // Carregar lançamentos quando mês/ano mudar
   const loadExistingLaunches = useCallback(async () => {
@@ -118,38 +163,6 @@ export default function LinhasPage() {
     }
   }, [isLancamentoModalOpen, selectedLineForLaunch, loadExistingLaunches]);
 
-  const loadData = async (retryCount = 0) => {
-    try {
-      setLoading(true);
-      const [linhasData, productsData] = await Promise.all([
-        api.productionLines.list(),
-        api.products.list(),
-      ]);
-      setLinhas(linhasData);
-      setAllProducts(productsData);
-    } catch (error: unknown) {
-      console.error('Erro ao carregar dados:', error);
-
-      // Retry automático em caso de erro de rede
-      if (retryCount < 2) {
-        logger.log(`Tentando reconectar (tentativa ${retryCount + 1}/2)...`);
-        setTimeout(() => loadData(retryCount + 1), 2000);
-        return;
-      }
-
-      const message = error instanceof Error ? error.message : 'Erro desconhecido';
-
-      // Mensagem mais amigável para o usuário
-      if (message.includes('Failed to fetch') || message.includes('Network') || message.includes('503')) {
-        alert('❌ Erro de conexão\n\nNão foi possível conectar ao servidor. Verifique:\n• Sua conexão com a internet\n• Se o servidor está rodando\n\nTentando reconectar automaticamente...');
-      } else {
-        alert('Erro ao carregar dados: ' + message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getProductsByLine = (lineId: string) =>
     allProducts.filter((p) => p.production_line_id === lineId);
 
@@ -180,7 +193,7 @@ export default function LinhasPage() {
   const handleDeleteLinha = async (linha: ProductionLine) => {
     if (!confirm(`Tem certeza que deseja excluir a linha "${linha.name}"?`)) return;
     try {
-      await api.productionLines.delete(linha.id);
+      await apiComplete.productionLines.delete(linha.id);
       await loadData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao excluir linha';
@@ -200,9 +213,9 @@ export default function LinhasPage() {
     try {
       setLinhaSubmitLoading(true);
       if (editingLinha) {
-        await api.productionLines.update(editingLinha.id, linhaForm);
+        await apiComplete.productionLines.update(editingLinha.id, linhaForm);
       } else {
-        await api.productionLines.create(linhaForm);
+        await apiComplete.productionLines.create(linhaForm);
       }
       setIsLinhaModalOpen(false);
       await loadData();
@@ -216,7 +229,7 @@ export default function LinhasPage() {
 
   const handleToggleActive = async (linha: ProductionLine) => {
     try {
-      await api.productionLines.update(linha.id, { active: !linha.active });
+      await apiComplete.productionLines.update(linha.id, { active: !linha.active });
       await loadData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao atualizar linha';
@@ -244,7 +257,7 @@ export default function LinhasPage() {
   const handleDeleteProduct = async (product: Product) => {
     if (!confirm(`Tem certeza que deseja excluir o produto "${product.name}"?`)) return;
     try {
-      await api.products.delete(product.id);
+      await apiComplete.products.delete(product.id);
       await loadData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao excluir produto';
@@ -265,9 +278,9 @@ export default function LinhasPage() {
     try {
       setProdutoSubmitLoading(true);
       if (editingProduct) {
-        await api.products.update(editingProduct.id, produtoForm);
+        await apiComplete.products.update(editingProduct.id, produtoForm);
       } else {
-        await api.products.create({ ...produtoForm, production_line_id: selectedLineId });
+        await apiComplete.products.create({ ...produtoForm, production_line_id: selectedLineId });
       }
       setIsProdutoModalOpen(false);
       await loadData();
@@ -281,7 +294,7 @@ export default function LinhasPage() {
 
   const handleTogglePublished = async (product: Product) => {
     try {
-      await api.products.update(product.id, { published: !product.published });
+      await apiComplete.products.update(product.id, { published: !product.published });
       await loadData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao atualizar produto';

@@ -1,0 +1,794 @@
+{
+  "Pré Tratamento": [
+    {
+      "nome": "SODA",
+      "id": 5643,
+      "volumeTanque": 3000,
+      "concentracao": 0,
+      "consumoMarco": 125,
+      "custoMarco": 5.16,
+      "custoTotalMarco": 645
+    },
+    {
+      "nome": "ACTIVE ZMC  ",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 75,
+      "custoMarco": 10.5,
+      "custoTotalMarco": 787.5
+    },
+    {
+      "nome": "COMPOSTO C-10   ",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 0,
+      "custoTotalMarco": 0
+    },
+    {
+      "nome": "METAL CLEAN 7E_F  ",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 50,
+      "custoMarco": 11.11,
+      "custoTotalMarco": 555.5
+    },
+    {
+      "nome": "METAL CLEAN FE-05",
+      "id": 65073,
+      "volumeTanque": 600,
+      "concentracao": 0,
+      "consumoMarco": 175,
+      "custoMarco": 11.61,
+      "custoTotalMarco": 2031.75
+    },
+    {
+      "nome": "Ácido Sulfurico",
+      "id": 64965,
+      "volumeTanque": 300,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 3.5,
+      "custoTotalMarco": 0
+    },
+    {
+      "nome": "Átivação Mista",
+      "id": 67567,
+      "volumeTanque": 400,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 0,
+      "custoTotalMarco": 0
+    }
+  ],
+  "Cobre Alcalino": [
+    {
+      "nome": "Anodo de Cobre",
+      "id": 56574,
+      "volumeTanque": 2500,
+      "concentracao": 250,
+      "consumoMarco": 10,
+      "custoMarco": 66.98,
+      "custoTotalMarco": 669.8000000000001
+    },
+    {
+      "nome": "ENVIROCOPPER ADJUSTER H ",
+      "id": null,
+      "volumeTanque": 2500,
+      "concentracao": 1,
+      "consumoMarco": 16,
+      "custoMarco": 10.11,
+      "custoTotalMarco": 161.76
+    },
+    {
+      "nome": "ENVIROCOPPER BRIGHTENER",
+      "id": 56579,
+      "volumeTanque": 2500,
+      "concentracao": 1,
+      "consumoMarco": 8,
+      "custoMarco": 8.63,
+      "custoTotalMarco": 69.04
+    },
+    {
+      "nome": "ENVIROCOPPER MAKE-UP ",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 40,
+      "custoMarco": 81.66,
+      "custoTotalMarco": 3266.3999999999996
+    },
+    {
+      "nome": "ENVIROCOPPER REFINER",
+      "id": 64964,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 25,
+      "custoMarco": 85.68,
+      "custoTotalMarco": 2142
+    },
+    {
+      "nome": "ENVIROCOPPER SOLUTION",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 180,
+      "custoMarco": 42.43,
+      "custoTotalMarco": 7637.4
+    },
+    {
+      "nome": "ENVIROCOPPER WETTER",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 3,
+      "custoMarco": 7.69,
+      "custoTotalMarco": 23.07
+    }
+  ],
+  "Níquel Strik": [
+    {
+      "nome": "Ânodo de Níquel",
+      "id": 56944,
+      "volumeTanque": 3500,
+      "concentracao": 275,
+      "consumoMarco": 40,
+      "custoMarco": 141.9,
+      "custoTotalMarco": 5676
+    },
+    {
+      "nome": "NIVELADOR MC INFINITY",
+      "id": 73191,
+      "volumeTanque": 3500,
+      "concentracao": 70,
+      "consumoMarco": 6,
+      "custoMarco": 30.78,
+      "custoTotalMarco": 184.68
+    },
+    {
+      "nome": "SULFATO DE NIQUEL SOLUCAO 60% ",
+      "id": 100490,
+      "volumeTanque": 3500,
+      "concentracao": 45,
+      "consumoMarco": 50,
+      "custoMarco": 35.1,
+      "custoTotalMarco": 1755
+    },
+    {
+      "nome": "MOLHADOR MC/P",
+      "id": 56563,
+      "volumeTanque": 3500,
+      "concentracao": 0.75,
+      "consumoMarco": 2.5,
+      "custoMarco": 9.08,
+      "custoTotalMarco": 22.7
+    },
+    {
+      "nome": "PURIFICADOR NIMC",
+      "id": 56566,
+      "volumeTanque": 3500,
+      "concentracao": 10,
+      "consumoMarco": 1.5,
+      "custoMarco": 18.75,
+      "custoTotalMarco": 28.125
+    }
+  ],
+  "Cobre Ácido": [
+    {
+      "nome": "Sufato de Cobre",
+      "id": 56951,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 110,
+      "custoMarco": 24.98,
+      "custoTotalMarco": 2747.8
+    },
+    {
+      "nome": "Ácido Sulfurico",
+      "id": 56124,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 35,
+      "custoMarco": 3.5,
+      "custoTotalMarco": 122.5
+    },
+    {
+      "nome": "Anodo de Cobre",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 300,
+      "custoMarco": 66.98,
+      "custoTotalMarco": 20094
+    },
+    {
+      "nome": "MC COPPER EVOLUTION M.U",
+      "id": 71927,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 12,
+      "custoMarco": 79.33,
+      "custoTotalMarco": 951.96
+    },
+    {
+      "nome": "MC COPPER EVOLUTION PARTE A",
+      "id": 71928,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 8,
+      "custoMarco": 84.02,
+      "custoTotalMarco": 672.16
+    },
+    {
+      "nome": "MC COPPER EVOLUTION PARTE B",
+      "id": 71930,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 6,
+      "custoMarco": 78.94,
+      "custoTotalMarco": 473.64
+    },
+    {
+      "nome": "MC COPPER EVOLUTION UMECTANTE",
+      "id": 71926,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 10,
+      "custoMarco": 44.75,
+      "custoTotalMarco": 447.5
+    },
+    {
+      "nome": "MC COPPER CORRECTOR",
+      "id": 56332,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 5,
+      "custoMarco": 43.8,
+      "custoTotalMarco": 219
+    }
+  ],
+  "Desengraxante Quí": [
+    {
+      "nome": "METAL CLEAN FE-05",
+      "id": 56951,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 5,
+      "custoMarco": 11.61,
+      "custoTotalMarco": 58.05
+    }
+  ],
+  "Níquel Brilhante": [
+    {
+      "nome": "Ânodo de Níquel",
+      "id": 56944,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 180,
+      "custoMarco": 141.9,
+      "custoTotalMarco": 25542
+    },
+    {
+      "nome": "SULFATO DE NIQUEL SOLUCAO 60% ",
+      "id": 73191,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 175,
+      "custoMarco": 35.1,
+      "custoTotalMarco": 6142.5
+    },
+    {
+      "nome": "Cloreto de Níquel",
+      "id": 100490,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 9,
+      "custoMarco": 40.56,
+      "custoTotalMarco": 365.04
+    },
+    {
+      "nome": "Ácido Borico",
+      "id": 56563,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 3,
+      "custoMarco": 9.3,
+      "custoTotalMarco": 27.900000000000002
+    },
+    {
+      "nome": "ABRILHANTADOR MC INFINITY",
+      "id": 56566,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 35,
+      "custoMarco": 45.2,
+      "custoTotalMarco": 1582
+    },
+    {
+      "nome": "MOLHADOR MC/P",
+      "id": 65078,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 50,
+      "custoMarco": 9.08,
+      "custoTotalMarco": 454
+    },
+    {
+      "nome": "NIVELADOR MC INFINITY",
+      "id": 56317,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 100,
+      "custoMarco": 30.78,
+      "custoTotalMarco": 3078
+    },
+    {
+      "nome": "PURIFICADOR NIMC",
+      "id": 56576,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 35,
+      "custoMarco": 18.75,
+      "custoTotalMarco": 656.25
+    }
+  ],
+  "Níquel Strik (2)": [
+    {
+      "nome": "Ânodo de Níquel",
+      "id": 56944,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 15,
+      "custoMarco": 141.9,
+      "custoTotalMarco": 2128.5
+    },
+    {
+      "nome": "NIVELADOR MC INFINITY",
+      "id": 73191,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 3,
+      "custoMarco": 30.78,
+      "custoTotalMarco": 92.34
+    },
+    {
+      "nome": "SULFATO DE NIQUEL SOLUCAO 60% ",
+      "id": 100490,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 25,
+      "custoMarco": 35.1,
+      "custoTotalMarco": 877.5
+    },
+    {
+      "nome": "MOLHADOR MC/P",
+      "id": 56563,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 2,
+      "custoMarco": 9.08,
+      "custoTotalMarco": 18.16
+    },
+    {
+      "nome": "PURIFICADOR NIMC",
+      "id": 56566,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 1,
+      "custoMarco": 18.75,
+      "custoTotalMarco": 18.75
+    }
+  ],
+  "Cromo": [
+    {
+      "nome": "Ânodo  Chumbo",
+      "id": 56574,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 22.5,
+      "custoMarco": 1075.4,
+      "custoTotalMarco": 24196.500000000004
+    },
+    {
+      "nome": "COMPOSTO CRMC   ",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 75,
+      "custoMarco": 67.77,
+      "custoTotalMarco": 5082.75
+    },
+    {
+      "nome": "SUPRESSOR CRMC/H",
+      "id": 56579,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 1,
+      "custoMarco": 405.11,
+      "custoTotalMarco": 405.11
+    },
+    {
+      "nome": "COMPOSTO C-170   ",
+      "id": null,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 5,
+      "custoMarco": 18.83,
+      "custoTotalMarco": 94.14999999999999
+    }
+  ],
+  "Pré Tratamento Verniz": [
+    {
+      "nome": "Desengraxante ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 4,
+      "custoMarco": 10,
+      "custoTotalMarco": 40
+    },
+    {
+      "nome": "Ativação Sulfúrica",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 5,
+      "custoMarco": 20,
+      "custoTotalMarco": 100
+    }
+  ],
+  "Verniz Cataforético": [
+    {
+      "nome": " Cobre                 Gold 15",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 426.73,
+      "custoMarco": 10241.52,
+      "custoTotalMarco": 19
+    },
+    {
+      "nome": "MC SOLV 010    ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 81.16,
+      "custoMarco": 1055.08,
+      "custoTotalMarco": 5
+    },
+    {
+      "nome": "MC SOLV 013   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 170.17,
+      "custoMarco": 3403.3999999999996,
+      "custoTotalMarco": 10
+    },
+    {
+      "nome": "Adjuster MC",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 23.74,
+      "custoMarco": 451.05999999999995,
+      "custoTotalMarco": 10
+    },
+    {
+      "nome": "Unimate MC",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 353.11,
+      "custoMarco": 8827.75,
+      "custoTotalMarco": 15
+    },
+    {
+      "nome": "Preto Fosco",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 448.34,
+      "custoMarco": 26900.399999999998,
+      "custoTotalMarco": 65
+    },
+    {
+      "nome": "MC SOLV 010    ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 81.16,
+      "custoMarco": 973.92,
+      "custoTotalMarco": 9
+    },
+    {
+      "nome": "MC SOLV 013   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 170.17,
+      "custoMarco": 3743.74,
+      "custoTotalMarco": 24
+    },
+    {
+      "nome": "Adjuster MC ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 23.74,
+      "custoMarco": 522.28,
+      "custoTotalMarco": 24
+    },
+    {
+      "nome": "Unimate MC",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 353.11,
+      "custoMarco": 7768.42,
+      "custoTotalMarco": 24
+    },
+    {
+      "nome": "Preto Brilhante",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 305.79,
+      "custoMarco": 3057.9,
+      "custoTotalMarco": 2
+    },
+    {
+      "nome": "MC SOLV 010    ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 81.16,
+      "custoMarco": 405.79999999999995,
+      "custoTotalMarco": 3
+    },
+    {
+      "nome": "MC SOLV 013   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 170.17,
+      "custoMarco": 340.34,
+      "custoTotalMarco": 2
+    },
+    {
+      "nome": "Ouro Fosco Gold",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 427.38,
+      "custoMarco": 8547.6,
+      "custoTotalMarco": 17
+    },
+    {
+      "nome": "MC SOLV 010    ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 81.16,
+      "custoMarco": 1055.08,
+      "custoTotalMarco": 7
+    },
+    {
+      "nome": "MC SOLV 013   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 170.17,
+      "custoMarco": 3403.3999999999996,
+      "custoTotalMarco": 10
+    },
+    {
+      "nome": "Adjuster MC",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 23.74,
+      "custoMarco": 451.05999999999995,
+      "custoTotalMarco": 10
+    },
+    {
+      "nome": "Unimate MC",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 353.11,
+      "custoMarco": 8827.75,
+      "custoTotalMarco": 12
+    },
+    {
+      "nome": "Champagne",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 476.4,
+      "custoMarco": 0,
+      "custoTotalMarco": 20
+    },
+    {
+      "nome": "MC SOLV 010    ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 81.16,
+      "custoMarco": 1055.08,
+      "custoTotalMarco": 9
+    },
+    {
+      "nome": "MC SOLV 013   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 170.17,
+      "custoMarco": 3403.3999999999996,
+      "custoTotalMarco": 19
+    },
+    {
+      "nome": "Adjuster MC",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 23.74,
+      "custoMarco": 451.05999999999995,
+      "custoTotalMarco": 19
+    },
+    {
+      "nome": "Unimate MC",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 353.11,
+      "custoMarco": 8827.75,
+      "custoTotalMarco": 19
+    },
+    {
+      "nome": "Grafite Omix",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 343.8,
+      "custoMarco": 0,
+      "custoTotalMarco": 10
+    },
+    {
+      "nome": "MC SOLV 010    ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 81.16,
+      "custoMarco": 1217.3999999999999,
+      "custoTotalMarco": 5
+    },
+    {
+      "nome": "MC SOLV 013   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 170.17,
+      "custoMarco": 850.8499999999999,
+      "custoTotalMarco": 2
+    }
+  ],
+  "Verniz Imersão": [
+    {
+      "nome": "MC CLAD 2000    ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 5.8,
+      "custoMarco": 3625,
+      "custoTotalMarco": 0
+    },
+    {
+      "nome": "MC SOLV 2000 ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 5.4,
+      "custoMarco": 13.5,
+      "custoTotalMarco": 0
+    }
+  ],
+  "Desplacante  ": [],
+  "Desplacante de gancheira ": [
+    {
+      "nome": "ACTIVE MC-20   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 100,
+      "custoMarco": 9.22,
+      "custoTotalMarco": 922.0000000000001
+    },
+    {
+      "nome": "STRIP COAT NI-2",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 25,
+      "custoMarco": 32.64,
+      "custoTotalMarco": 816
+    },
+    {
+      "nome": "STRIP COAT UNIQUE  ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 100,
+      "custoMarco": 38.65,
+      "custoTotalMarco": 3865
+    },
+    {
+      "nome": "ACTIVE MC-40   ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 100,
+      "custoMarco": 28.5,
+      "custoTotalMarco": 2850
+    }
+  ],
+  "E.T.E": [
+    {
+      "nome": "Soda 50%",
+      "id": 56127,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 1,
+      "custoMarco": 3,
+      "custoTotalMarco": 3
+    },
+    {
+      "nome": "Ácido Cloridrico",
+      "id": 56124,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 0,
+      "custoTotalMarco": 0
+    },
+    {
+      "nome": "Metabissulfito de Sódio",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 0,
+      "custoTotalMarco": 0
+    },
+    {
+      "nome": "Carbonato de Calcio ",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 0,
+      "custoTotalMarco": 0
+    },
+    {
+      "nome": "Anti espumante",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 0,
+      "custoTotalMarco": 0
+    },
+    {
+      "nome": "Polieletrólito",
+      "id": 0,
+      "volumeTanque": 0,
+      "concentracao": 0,
+      "consumoMarco": 0,
+      "custoMarco": 0,
+      "custoTotalMarco": 0
+    }
+  ]
+}

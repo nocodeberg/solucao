@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type MoRow = { tipo: string; custo_mensal: number; mes: number };
 type ValorDateRow = { valor: number; data: string };
+type ProductLaunchRow = { custo_total: number; mes: number };
 
 type ResumoData = {
   totalFuncionarios: number;
@@ -27,8 +28,9 @@ type ResumoData = {
   totalMOI: number;
   totalManutencao: number;
   totalAgua: number;
+  totalProdutosLancados: number;
   totalGeral: number;
-  chartData: { mes: string; MOD: number; MOI: number; Manutencao: number; Agua: number }[];
+  chartData: { mes: string; MOD: number; MOI: number; Manutencao: number; Agua: number; ProdutosLancados: number }[];
 };
 
 export default function ResumoPage() {
@@ -43,6 +45,7 @@ export default function ResumoPage() {
     totalMOI: 0,
     totalManutencao: 0,
     totalAgua: 0,
+    totalProdutosLancados: 0,
     totalGeral: 0,
     chartData: [],
   });
@@ -110,6 +113,19 @@ export default function ResumoPage() {
 
       const totalAgua = aguaData?.reduce((sum, item) => sum + parseFloat(item.valor.toString()), 0) || 0;
 
+      // Lançamentos de produtos do ano
+      const { data: launchData } = await supabase
+        .from('product_launches')
+        .select('custo_total, mes')
+        .eq('company_id', profile.company_id)
+        .eq('ano', selectedYear)
+        .returns<ProductLaunchRow[]>();
+
+      const totalProdutosLancados = launchData?.reduce(
+        (sum, item) => sum + parseFloat(item.custo_total.toString()),
+        0
+      ) || 0;
+
       // Chart data por mês
       const chartData = MONTHS.map((month) => {
         let mod = 0;
@@ -135,12 +151,17 @@ export default function ResumoPage() {
           })
           .reduce((sum, item) => sum + parseFloat(item.valor.toString()), 0) || 0;
 
+        const produtosLancados = launchData
+          ?.filter((item) => item.mes === month.value)
+          .reduce((sum, item) => sum + parseFloat(item.custo_total.toString()), 0) || 0;
+
         return {
           mes: month.label,
           MOD: mod,
           MOI: moi,
           Manutencao: manut,
           Agua: agua,
+          ProdutosLancados: produtosLancados,
         };
       });
 
@@ -152,7 +173,8 @@ export default function ResumoPage() {
         totalMOI,
         totalManutencao,
         totalAgua,
-        totalGeral: totalMOD + totalMOI + totalManutencao + totalAgua,
+        totalProdutosLancados,
+        totalGeral: totalMOD + totalMOI + totalManutencao + totalAgua + totalProdutosLancados,
         chartData,
       });
     } catch (error) {
@@ -209,7 +231,7 @@ export default function ResumoPage() {
       </div>
 
       {/* Cards de Custos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <StatsCard
           title="Total M.O.D"
           value={formatCurrency(data.totalMOD)}
@@ -233,6 +255,12 @@ export default function ResumoPage() {
           value={formatCurrency(data.totalAgua)}
           icon={<Droplets className="w-6 h-6" />}
           color="blue"
+        />
+        <StatsCard
+          title="Produtos Lançados"
+          value={formatCurrency(data.totalProdutosLancados)}
+          icon={<Factory className="w-6 h-6" />}
+          color="green"
         />
       </div>
 
@@ -263,7 +291,8 @@ export default function ResumoPage() {
               <Bar dataKey="MOD" stackId="a" fill="#6366f1" name="M.O.D" radius={[0, 0, 0, 0]} />
               <Bar dataKey="MOI" stackId="a" fill="#a855f7" name="M.O.I" radius={[0, 0, 0, 0]} />
               <Bar dataKey="Manutencao" stackId="a" fill="#f97316" name="Manutenção" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="Agua" stackId="a" fill="#3b82f6" name="Água" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Agua" stackId="a" fill="#3b82f6" name="Água" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="ProdutosLancados" stackId="a" fill="#10b981" name="Produtos Lançados" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
 import { FormModal } from '@/components/ui/Modal';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { Group } from '@/types/database.types';
 
 interface GrupoFormData {
@@ -16,7 +16,7 @@ interface GrupoFormData {
 }
 
 export default function GruposPage() {
-  const { canCreate, canEdit, canDelete } = useAuth();
+  const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
   const [grupos, setGrupos] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,22 +28,34 @@ export default function GruposPage() {
   const [formErrors, setFormErrors] = useState<Partial<GrupoFormData>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadGrupos();
-  }, []);
+  const loadGrupos = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadGrupos = async () => {
     try {
       setLoading(true);
-      const data = await api.groups.list();
+      const data = await apiComplete.groups.list();
       setGrupos(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar grupos:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar grupos';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar grupos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadGrupos();
+  }, [authLoading, user, loadGrupos]);
 
   const handleCreate = () => {
     setEditingGrupo(null);
@@ -66,7 +78,7 @@ export default function GruposPage() {
     if (!confirm(`Tem certeza que deseja excluir o grupo "${grupo.name}"?`)) return;
 
     try {
-      await api.groups.delete(grupo.id);
+      await apiComplete.groups.delete(grupo.id);
       await loadGrupos();
     } catch (error: unknown) {
       console.error('Erro ao excluir grupo:', error);
@@ -88,9 +100,9 @@ export default function GruposPage() {
     try {
       setSubmitLoading(true);
       if (editingGrupo) {
-        await api.groups.update(editingGrupo.id, formData);
+        await apiComplete.groups.update(editingGrupo.id, formData);
       } else {
-        await api.groups.create(formData);
+        await apiComplete.groups.create(formData);
       }
       setIsModalOpen(false);
       await loadGrupos();

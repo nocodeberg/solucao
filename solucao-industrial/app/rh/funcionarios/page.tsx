@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -11,7 +11,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import FileUpload from '@/components/ui/FileUpload';
 import { Plus, Pencil, Trash2, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { Employee, Cargo } from '@/types/database.types';
 import { maskCPF, validateCPF, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
@@ -29,7 +29,7 @@ interface EmployeeFormData {
 }
 
 export default function FuncionariosPage() {
-  const { canCreate, canEdit, canDelete } = useAuth();
+  const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,26 +49,38 @@ export default function FuncionariosPage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof EmployeeFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const loadData = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadData = async () => {
     try {
       setLoading(true);
       const [employeesData, cargosData] = await Promise.all([
-        api.employees.list(),
-        api.cargos.list(),
+        apiComplete.employees.list(),
+        apiComplete.cargos.list(),
       ]);
       setEmployees(employeesData);
       setCargos(cargosData);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar dados';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [authLoading, user, loadData]);
 
   const handleCreate = () => {
     setEditingEmployee(null);
@@ -110,7 +122,7 @@ export default function FuncionariosPage() {
     }
 
     try {
-      await api.employees.delete(employee.id);
+      await apiComplete.employees.delete(employee.id);
       await loadData();
     } catch (error: unknown) {
       console.error('Erro ao excluir funcionário:', error);
@@ -171,9 +183,9 @@ export default function FuncionariosPage() {
       void foto_url;
 
       if (editingEmployee) {
-        await api.employees.update(editingEmployee.id, dataToSubmit);
+        await apiComplete.employees.update(editingEmployee.id, dataToSubmit);
       } else {
-        await api.employees.create(dataToSubmit);
+        await apiComplete.employees.create(dataToSubmit);
       }
 
       setIsModalOpen(false);

@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node start-all.js",
+    "dev": "next dev",
+    "dev:full": "node start-all.js",
     "dev:frontend": "next dev",
     "dev:backend": "cd server && npm run dev",
     "build": "next build",
-    "start": "node start-all.js",
+    "start": "next start",
     "lint": "next lint",
     "server:install": "cd server && npm install"
   },

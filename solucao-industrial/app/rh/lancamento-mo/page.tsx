@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -9,7 +9,7 @@ import Select, { SelectOption } from '@/components/ui/Select';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api/client';
+import { apiComplete } from '@/lib/api/supabase-complete';
 import { LancamentoMO, Employee, ProductionLine } from '@/types/database.types';
 import { formatCurrency, MONTHS } from '@/lib/utils';
 
@@ -26,7 +26,7 @@ interface LancamentoFormData {
 }
 
 export default function LancamentoMOPage() {
-  const { canCreate } = useAuth();
+  const { canCreate, user, loading: authLoading } = useAuth();
   const [lancamentos, setLancamentos] = useState<LancamentoMO[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
@@ -50,28 +50,40 @@ export default function LancamentoMOPage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof LancamentoFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const loadData = useCallback(async () => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
 
-  const loadData = async () => {
     try {
       setLoading(true);
       const [lancamentosData, employeesData, linhasData] = await Promise.all([
-        api.lancamentoMO.list(),
-        api.employees.list(),
-        api.productionLines.list(),
+        apiComplete.lancamentoMO.list(),
+        apiComplete.employees.list(),
+        apiComplete.productionLines.list(),
       ]);
       setLancamentos(lancamentosData);
       setEmployees(employeesData);
       setLinhas(linhasData);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao carregar dados';
+      if (message.includes('Usuário não autenticado')) return;
       alert('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [authLoading, user, loadData]);
 
   const handleCreate = () => {
     setFormData({
@@ -122,7 +134,7 @@ export default function LancamentoMOPage() {
         ...formData,
         data_lancamento: `${formData.ano}-${String(formData.mes).padStart(2, '0')}-01`,
       };
-      await api.lancamentoMO.create(submitData);
+      await apiComplete.lancamentoMO.create(submitData);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {
