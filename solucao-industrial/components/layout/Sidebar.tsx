@@ -17,7 +17,6 @@ import {
   Clock,
   FileText,
   Briefcase,
-  FlaskConical,
   Zap,
   Receipt,
   Truck,
@@ -156,12 +155,6 @@ export default function Sidebar() {
           label: 'Consumo água',
           icon: <Droplets className="w-4 h-4" />,
           href: '/consumo-agua',
-        },
-        {
-          id: 'lancamento-pretratamento',
-          label: 'Lançamento',
-          icon: <FlaskConical className="w-4 h-4" />,
-          href: '/gestao-areas/lancamento-pretratamento',
         },
         {
           id: 'peca-por-hora',
