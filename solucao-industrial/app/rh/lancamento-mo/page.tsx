@@ -105,7 +105,7 @@ export default function LancamentoMOPage() {
   const handleEmployeeChange = (employeeId: string) => {
     setFormData((prev) => {
       const employee = employees.find((e) => e.id === employeeId);
-      const salario = employee ? parseFloat(employee.salario_base.toString()) : 0;
+      const salario = employee ? parseFloat(String(employee.salario_base ?? 0)) : 0;
       return {
         ...prev,
         employee_id: employeeId,
@@ -169,11 +169,11 @@ export default function LancamentoMOPage() {
   // Totais por tipo
   const totalMOD = lancamentos
     .filter((l) => l.tipo === 'MOD')
-    .reduce((sum, l) => sum + parseFloat(l.custo_mensal.toString()), 0);
+    .reduce((sum, l) => sum + parseFloat(String(l.custo_mensal ?? 0)), 0);
 
   const totalMOI = lancamentos
     .filter((l) => l.tipo === 'MOI')
-    .reduce((sum, l) => sum + parseFloat(l.custo_mensal.toString()), 0);
+    .reduce((sum, l) => sum + parseFloat(String(l.custo_mensal ?? 0)), 0);
 
   const columns: Column<LancamentoMO>[] = [
     {
@@ -220,13 +220,13 @@ export default function LancamentoMOPage() {
       key: 'salario_base',
       label: 'Salário Base',
       sortable: true,
-      render: (reg) => formatCurrency(parseFloat(reg.salario_base.toString())),
+      render: (reg) => formatCurrency(parseFloat(String(reg.salario_base ?? 0))),
     },
     {
       key: 'custo_mensal',
       label: 'Custo Mensal',
       sortable: true,
-      render: (reg) => formatCurrency(parseFloat(reg.custo_mensal.toString())),
+      render: (reg) => formatCurrency(parseFloat(String(reg.custo_mensal ?? 0))),
     },
     {
       key: 'observacao',

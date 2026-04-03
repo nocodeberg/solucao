@@ -90,9 +90,9 @@ export default function DashboardPage() {
 
       moData?.forEach((item) => {
         if (item.tipo === 'MOD') {
-          modTotal += parseFloat(item.custo_mensal.toString());
+          modTotal += parseFloat(String(item.custo_mensal ?? 0));
         } else {
-          moiTotal += parseFloat(item.custo_mensal.toString());
+          moiTotal += parseFloat(String(item.custo_mensal ?? 0));
         }
       });
 
@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
       const manutencaoTotal =
         manutencaoData?.reduce(
-          (sum, item) => sum + parseFloat(item.valor.toString()),
+          (sum, item) => sum + parseFloat(String(item.valor ?? 0)),
           0
         ) || 0;
 
@@ -177,9 +177,9 @@ export default function DashboardPage() {
 
       moData?.forEach((item) => {
         if (item.tipo === 'MOD') {
-          custoMOD += parseFloat(item.custo_mensal.toString());
+          custoMOD += parseFloat(String(item.custo_mensal ?? 0));
         } else {
-          custoMOI += parseFloat(item.custo_mensal.toString());
+          custoMOI += parseFloat(String(item.custo_mensal ?? 0));
         }
       });
 
@@ -201,7 +201,7 @@ export default function DashboardPage() {
       const { data: manutencaoData } = await manutencaoQuery.returns<ManutencaoRow[]>();
       const manutencaoTotal =
         manutencaoData?.reduce(
-          (sum, item) => sum + parseFloat(item.valor.toString()),
+          (sum, item) => sum + parseFloat(item.valor),
           0
         ) || 0;
 
@@ -223,7 +223,7 @@ export default function DashboardPage() {
       const { data: aguaData } = await aguaQuery.returns<AguaRow[]>();
       const aguaTotal =
         aguaData?.reduce(
-          (sum, item) => sum + parseFloat(item.valor.toString()),
+          (sum, item) => sum + parseFloat(String(item.valor ?? 0)),
           0
         ) || 0;
 
@@ -615,10 +615,10 @@ export default function DashboardPage() {
                               {mes?.fullLabel || ''} / {lanc.ano}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                              {formatCurrency(parseFloat(lanc.salario_base.toString()))}
+                              {formatCurrency(parseFloat(String(lanc.salario_base ?? 0)))}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 text-right font-bold">
-                              {formatCurrency(parseFloat(lanc.custo_mensal.toString()))}
+                              {formatCurrency(parseFloat(String(lanc.custo_mensal ?? 0)))}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600">
                               {lanc.observacao || '-'}
@@ -635,7 +635,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
                           {formatCurrency(
                             lancamentosDetalhados.reduce(
-                              (sum, l) => sum + parseFloat(l.custo_mensal.toString()),
+                              (sum, l) => sum + parseFloat(String(l.custo_mensal ?? 0)),
                               0
                             )
                           )}
@@ -685,7 +685,7 @@ export default function DashboardPage() {
                             {manut.observacao || '-'}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900 text-right font-bold">
-                            {formatCurrency(parseFloat(manut.valor.toString()))}
+                            {formatCurrency(parseFloat(String(manut.valor ?? 0)))}
                           </td>
                         </tr>
                       ))}
@@ -698,7 +698,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
                           {formatCurrency(
                             manutencaoDetalhada.reduce(
-                              (sum, m) => sum + parseFloat(m.valor.toString()),
+                              (sum, m) => sum + parseFloat(String(m.valor ?? 0)),
                               0
                             )
                           )}
@@ -747,7 +747,7 @@ export default function DashboardPage() {
                             {agua.observacao || '-'}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900 text-right font-bold">
-                            {formatCurrency(parseFloat(agua.valor.toString()))}
+                            {formatCurrency(parseFloat(String(agua.valor ?? 0)))}
                           </td>
                         </tr>
                       ))}
@@ -760,7 +760,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-sm font-bold text-primary-600 text-right">
                           {formatCurrency(
                             aguaDetalhada.reduce(
-                              (sum, a) => sum + parseFloat(a.valor.toString()),
+                              (sum, a) => sum + parseFloat(String(a.valor ?? 0)),
                               0
                             )
                           )}

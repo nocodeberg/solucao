@@ -70,7 +70,7 @@ export default function EncargosPage() {
     setEditingEncargo(encargo);
     setFormData({
       nome: encargo.nome,
-      percentual: parseFloat(encargo.percentual.toString()),
+      percentual: parseFloat(String(encargo.percentual ?? 0)),
       descricao: encargo.descricao || '',
     });
     setFormErrors({});
@@ -138,7 +138,7 @@ export default function EncargosPage() {
 
   // Calcular percentual total
   const totalPercentual = encargos.reduce(
-    (sum, encargo) => sum + parseFloat(encargo.percentual.toString()),
+    (sum, encargo) => sum + parseFloat(String(encargo.percentual ?? 0)),
     0
   );
 
@@ -152,7 +152,7 @@ export default function EncargosPage() {
       key: 'percentual',
       label: 'Percentual',
       sortable: true,
-      render: (encargo) => `${parseFloat(encargo.percentual.toString()).toFixed(2)}%`,
+      render: (encargo) => `${parseFloat(String(encargo.percentual ?? 0)).toFixed(2)}%`,
     },
     {
       key: 'descricao',

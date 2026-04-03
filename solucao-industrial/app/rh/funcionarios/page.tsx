@@ -105,7 +105,7 @@ export default function FuncionariosPage() {
       nome: employee.nome,
       cpf: employee.cpf || '',
       cargo_id: employee.cargo_id || '',
-      salario_base: parseFloat(employee.salario_base.toString()),
+      salario_base: parseFloat(String(employee.salario_base ?? 0)),
       data_admissao: employee.data_admissao || new Date().toISOString().split('T')[0],
       telefone: employee.telefone || '',
       email: employee.email || '',
@@ -265,7 +265,7 @@ export default function FuncionariosPage() {
       key: 'salario_base',
       label: 'Salário Base',
       sortable: true,
-      render: (employee) => formatCurrency(parseFloat(employee.salario_base.toString())),
+      render: (employee) => formatCurrency(parseFloat(String(employee.salario_base ?? 0))),
     },
     {
       key: 'data_admissao',
