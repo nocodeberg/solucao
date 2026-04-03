@@ -110,12 +110,26 @@ export default function DashboardPage() {
           0
         ) || 0;
 
+      // Matéria-prima: buscar lançamentos de produtos (product_launches)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: materiaData } = await (supabase.from('product_launches') as any)
+        .select('custo_total')
+        .eq('company_id', profile.company_id)
+        .eq('ano', selectedYear)
+        .eq('mes', mes);
+
+      const materiaTotal =
+        materiaData?.reduce(
+          (sum: number, item: Record<string, unknown>) => sum + parseFloat(String(item.custo_total ?? 0)),
+          0
+        ) || 0;
+
       data.push({
         month: monthName,
         MOD: modTotal,
         MOI: moiTotal,
         Manutencao: manutencaoTotal,
-        Materia: 0,
+        Materia: materiaTotal,
       });
     }
 
@@ -213,9 +227,23 @@ export default function DashboardPage() {
           0
         ) || 0;
 
-      // Matéria prima (produtos consumidos)
-      // TODO: Implementar quando houver lançamento de consumo de produtos
-      const materiaPrimaTotal = 0;
+      // Matéria prima (produtos consumidos) - buscar de product_launches
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let materiaQuery = (supabase.from('product_launches') as any)
+        .select('custo_total')
+        .eq('company_id', profile.company_id)
+        .eq('ano', selectedYear);
+
+      if (!showTotal && selectedMonths.length > 0) {
+        materiaQuery = materiaQuery.in('mes', selectedMonths);
+      }
+
+      const { data: materiaData } = await materiaQuery;
+      const materiaPrimaTotal =
+        materiaData?.reduce(
+          (sum: number, item: Record<string, unknown>) => sum + parseFloat(String(item.custo_total ?? 0)),
+          0
+        ) || 0;
 
       const totalOperacao = custoMOD + custoMOI + materiaPrimaTotal + aguaTotal;
       const totalGeral = totalOperacao + manutencaoTotal;

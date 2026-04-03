@@ -18,6 +18,12 @@ import {
   FileText,
   Briefcase,
   FlaskConical,
+  Zap,
+  Receipt,
+  Truck,
+  TrendingDown,
+  Ruler,
+  Calculator,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -162,6 +168,55 @@ export default function Sidebar() {
           label: 'Peça por hora',
           icon: <Clock className="w-4 h-4" />,
           href: '/gestao-areas/pecas',
+        },
+        {
+          id: 'pecas-hora-calc',
+          label: 'Peças/Hora Galvano',
+          icon: <Calculator className="w-4 h-4" />,
+          href: '/gestao-areas/pecas-hora',
+        },
+        {
+          id: 'calculo-area',
+          label: 'Cálculo de Área',
+          icon: <Ruler className="w-4 h-4" />,
+          href: '/calculo-area',
+        },
+      ],
+    },
+    {
+      id: 'custos',
+      label: 'Custos',
+      icon: <Receipt className="w-5 h-5" />,
+      children: [
+        {
+          id: 'custos-variaveis',
+          label: 'Custos Variáveis',
+          icon: <Zap className="w-4 h-4" />,
+          href: '/custos-variaveis',
+        },
+        {
+          id: 'outros-custos',
+          label: 'Outros Custos',
+          icon: <Receipt className="w-4 h-4" />,
+          href: '/outros-custos',
+        },
+        {
+          id: 'transporte',
+          label: 'Transporte',
+          icon: <Truck className="w-4 h-4" />,
+          href: '/transporte',
+        },
+        {
+          id: 'investimentos',
+          label: 'Investimentos',
+          icon: <TrendingDown className="w-4 h-4" />,
+          href: '/investimentos',
+        },
+        {
+          id: 'custo-galvanoplastia',
+          label: 'Custo Galvanoplastia',
+          icon: <Calculator className="w-4 h-4" />,
+          href: '/custo-galvanoplastia',
         },
       ],
     },

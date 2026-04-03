@@ -1008,6 +1008,408 @@ export const users = {
 };
 
 // =====================================================
+// CUSTOS VARIÁVEIS (Energia, Telefone)
+// =====================================================
+const custosVariaveis = {
+  list: async (ano?: number) => {
+    try {
+      const profile = await getCurrentProfile();
+      let query = supabaseAdmin
+        .from('custos_variaveis')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .order('data', { ascending: false });
+
+      if (ano) {
+        query = query.gte('data', `${ano}-01-01`).lte('data', `${ano}-12-31`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro em custosVariaveis.list:', error);
+      throw error;
+    }
+  },
+
+  create: async (data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data: result, error } = await supabaseAdmin
+        .from('custos_variaveis')
+        .insert({ ...data, company_id: profile.company_id })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em custosVariaveis.create:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { error } = await supabaseAdmin
+        .from('custos_variaveis')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em custosVariaveis.delete:', error);
+      throw error;
+    }
+  },
+};
+
+// =====================================================
+// OUTROS CUSTOS
+// =====================================================
+const outrosCustos = {
+  list: async (ano?: number) => {
+    try {
+      const profile = await getCurrentProfile();
+      let query = supabaseAdmin
+        .from('outros_custos')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .order('ano', { ascending: false })
+        .order('mes', { ascending: false });
+
+      if (ano) {
+        query = query.eq('ano', ano);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro em outrosCustos.list:', error);
+      throw error;
+    }
+  },
+
+  create: async (data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data: result, error } = await supabaseAdmin
+        .from('outros_custos')
+        .insert({ ...data, company_id: profile.company_id })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em outrosCustos.create:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { error } = await supabaseAdmin
+        .from('outros_custos')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em outrosCustos.delete:', error);
+      throw error;
+    }
+  },
+};
+
+// =====================================================
+// TRANSPORTE
+// =====================================================
+const transporte = {
+  list: async (ano?: number) => {
+    try {
+      const profile = await getCurrentProfile();
+      let query = supabaseAdmin
+        .from('transporte')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .order('ano', { ascending: false })
+        .order('mes', { ascending: false });
+
+      if (ano) {
+        query = query.eq('ano', ano);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro em transporte.list:', error);
+      throw error;
+    }
+  },
+
+  create: async (data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data: result, error } = await supabaseAdmin
+        .from('transporte')
+        .insert({ ...data, company_id: profile.company_id })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em transporte.create:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { error } = await supabaseAdmin
+        .from('transporte')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em transporte.delete:', error);
+      throw error;
+    }
+  },
+};
+
+// =====================================================
+// INVESTIMENTOS
+// =====================================================
+const investimentos = {
+  list: async () => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data, error } = await supabaseAdmin
+        .from('investimentos')
+        .select('*, production_line:production_lines(id, name)')
+        .eq('company_id', profile.company_id)
+        .order('data_aquisicao', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro em investimentos.list:', error);
+      throw error;
+    }
+  },
+
+  create: async (data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const valorMensal = data.valor_investimento && data.depreciacao_meses
+        ? data.valor_investimento / data.depreciacao_meses
+        : 0;
+      const dataVencimento = data.data_aquisicao && data.depreciacao_meses
+        ? (() => {
+            const d = new Date(data.data_aquisicao);
+            d.setMonth(d.getMonth() + data.depreciacao_meses);
+            return d.toISOString().split('T')[0];
+          })()
+        : null;
+
+      const { data: result, error } = await supabaseAdmin
+        .from('investimentos')
+        .insert({
+          ...data,
+          company_id: profile.company_id,
+          valor_mensal: valorMensal,
+          data_vencimento: dataVencimento,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em investimentos.create:', error);
+      throw error;
+    }
+  },
+
+  update: async (id: string, data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const valorMensal = data.valor_investimento && data.depreciacao_meses
+        ? data.valor_investimento / data.depreciacao_meses
+        : undefined;
+      const dataVencimento = data.data_aquisicao && data.depreciacao_meses
+        ? (() => {
+            const d = new Date(data.data_aquisicao);
+            d.setMonth(d.getMonth() + data.depreciacao_meses);
+            return d.toISOString().split('T')[0];
+          })()
+        : undefined;
+
+      const payload: any = { ...data };
+      if (valorMensal !== undefined) payload.valor_mensal = valorMensal;
+      if (dataVencimento !== undefined) payload.data_vencimento = dataVencimento;
+
+      const { data: result, error } = await supabaseAdmin
+        .from('investimentos')
+        .update(payload)
+        .eq('id', id)
+        .eq('company_id', profile.company_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em investimentos.update:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { error } = await supabaseAdmin
+        .from('investimentos')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em investimentos.delete:', error);
+      throw error;
+    }
+  },
+};
+
+// =====================================================
+// PEÇAS POR HORA (Cálculos Eletroquímicos)
+// =====================================================
+const pecasHora = {
+  list: async () => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data, error } = await supabaseAdmin
+        .from('pecas_hora')
+        .select('*, production_line:production_lines(id, name)')
+        .eq('company_id', profile.company_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro em pecasHora.list:', error);
+      throw error;
+    }
+  },
+
+  create: async (data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      // Calcular campos derivados
+      const pecasPorCarga = data.peso_peca_kg > 0
+        ? data.kg_por_carga / data.peso_peca_kg
+        : 0;
+      const areaCargaDm2 = pecasPorCarga * data.area_peca_dm2;
+      // Fórmula eletroquímica: tempo de banho
+      const tempoBanho = data.densidade_corrente > 0 && data.equivalente_eletroquimico > 0 && (data.rendimento_corrente / 100) > 0
+        ? (data.espessura_mm * data.peso_especifico * 1000) / (data.densidade_corrente * data.equivalente_eletroquimico * (data.rendimento_corrente / 100) * 60)
+        : 0;
+      const pecasPorHora = tempoBanho > 0
+        ? (pecasPorCarga * data.numero_tambores * 60) / tempoBanho
+        : 0;
+      const kgPorHora = pecasPorHora * data.peso_peca_kg;
+
+      const { data: result, error } = await supabaseAdmin
+        .from('pecas_hora')
+        .insert({
+          ...data,
+          company_id: profile.company_id,
+          pecas_por_carga: pecasPorCarga,
+          area_carga_dm2: areaCargaDm2,
+          pecas_por_hora: pecasPorHora,
+          kg_por_hora: kgPorHora,
+          tempo_banho_min: tempoBanho,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em pecasHora.create:', error);
+      throw error;
+    }
+  },
+
+  update: async (id: string, data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const pecasPorCarga = data.peso_peca_kg > 0
+        ? data.kg_por_carga / data.peso_peca_kg
+        : 0;
+      const areaCargaDm2 = pecasPorCarga * data.area_peca_dm2;
+      const tempoBanho = data.densidade_corrente > 0 && data.equivalente_eletroquimico > 0 && (data.rendimento_corrente / 100) > 0
+        ? (data.espessura_mm * data.peso_especifico * 1000) / (data.densidade_corrente * data.equivalente_eletroquimico * (data.rendimento_corrente / 100) * 60)
+        : 0;
+      const pecasPorHora = tempoBanho > 0
+        ? (pecasPorCarga * data.numero_tambores * 60) / tempoBanho
+        : 0;
+      const kgPorHora = pecasPorHora * data.peso_peca_kg;
+
+      const { data: result, error } = await supabaseAdmin
+        .from('pecas_hora')
+        .update({
+          ...data,
+          pecas_por_carga: pecasPorCarga,
+          area_carga_dm2: areaCargaDm2,
+          pecas_por_hora: pecasPorHora,
+          kg_por_hora: kgPorHora,
+          tempo_banho_min: tempoBanho,
+        })
+        .eq('id', id)
+        .eq('company_id', profile.company_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em pecasHora.update:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { error } = await supabaseAdmin
+        .from('pecas_hora')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em pecasHora.delete:', error);
+      throw error;
+    }
+  },
+};
+
+// =====================================================
 // EXPORTAR API COMPLETA
 // =====================================================
 export const apiComplete = {
@@ -1022,6 +1424,11 @@ export const apiComplete = {
   lancamentoMO,
   pieces,
   users,
+  custosVariaveis,
+  outrosCustos,
+  transporte,
+  investimentos,
+  pecasHora,
 };
 
 export default apiComplete;

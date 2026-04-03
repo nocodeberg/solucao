@@ -149,8 +149,11 @@ export default function LinhasPage() {
     const consumptions: Record<string, number> = {};
 
     data?.forEach((launch: ProductLaunch) => {
-      launches[launch.product_id] = launch.quantidade || 0;
-      consumptions[launch.product_id] = launch.consumo || 0;
+      // Lançamento começa em 0 (é sempre uma nova entrada)
+      launches[launch.product_id] = 0;
+      // Consumo acumulado = total já lançado anteriormente
+      const acumulado = (launch as unknown as Record<string, unknown>).consumo_acumulado;
+      consumptions[launch.product_id] = parseFloat(String(acumulado ?? launch.consumo ?? 0));
     });
 
     setLaunchData(launches);
@@ -343,50 +346,99 @@ export default function LinhasPage() {
     }));
   };
 
-  const handleSaveLaunches = async () => {
+  // Confirmar lançamento individual (Enter ou clique no ✓)
+  const [confirmingProductId, setConfirmingProductId] = useState<string | null>(null);
+
+  const handleConfirmLaunch = async (product: Product) => {
     if (!profile?.company_id || !profile?.id || !selectedLineForLaunch) return;
 
-    setLaunchLoading(true);
+    const lancamento = launchData[product.id] || 0;
+    if (lancamento <= 0) return;
+
+    setConfirmingProductId(product.id);
     try {
-      const launches = [];
+      const consumoAnterior = consumptionData[product.id] || 0;
+      const novoConsumoAcumulado = consumoAnterior + lancamento;
+      const custo_total = novoConsumoAcumulado * product.price;
 
-      for (const product of lineProducts) {
-        const quantidade = launchData[product.id] || 0;
-        const custo_total = quantidade * product.price;
-
-        launches.push({
+      // 1. Salvar lançamento (upsert com onConflict na constraint UNIQUE)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('product_launches') as any)
+        .upsert([{
           company_id: profile.company_id,
           product_id: product.id,
           production_line_id: selectedLineForLaunch.id,
           mes: selectedMonth,
           ano: selectedYear,
-          quantidade,
-          consumo: 0,
+          quantidade: lancamento,
+          consumo: lancamento,
+          consumo_acumulado: novoConsumoAcumulado,
           custo_unitario: product.price,
           custo_total,
           created_by: profile.id,
-        });
-      }
-
-      const { error } = await supabase
-        .from('product_launches')
-        // @ts-expect-error - Supabase type inference issue with upsert
-        .upsert(launches);
+        }], { onConflict: 'product_id,mes,ano,production_line_id' });
 
       if (error) {
         logger.error('Erro ao salvar lançamento:', error);
-        throw error;
+        alert('Erro ao salvar lançamento');
+        return;
       }
 
-      alert('Lançamentos salvos com sucesso!');
-      setIsLancamentoModalOpen(false);
-      setLaunchData({});
+      // 2. Registrar log de movimentação
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: logError } = await (supabase.from('product_launch_logs') as any)
+        .insert([{
+          company_id: profile.company_id,
+          product_id: product.id,
+          production_line_id: selectedLineForLaunch.id,
+          mes: selectedMonth,
+          ano: selectedYear,
+          tipo: 'ENTRADA',
+          quantidade: lancamento,
+          custo_unitario: product.price,
+          custo_total: lancamento * product.price,
+          observacao: `+${lancamento} (consumo: ${consumoAnterior} → ${novoConsumoAcumulado})`,
+          created_by: profile.id,
+        }]);
+
+      if (logError) {
+        logger.warn('Aviso: Erro ao salvar log:', logError);
+      }
+
+      // 3. Atualizar estado local
+      setConsumptionData((prev) => ({
+        ...prev,
+        [product.id]: novoConsumoAcumulado,
+      }));
+      setLaunchData((prev) => ({
+        ...prev,
+        [product.id]: 0,
+      }));
+
     } catch (error) {
-      logger.error('Erro ao salvar lançamentos:', error);
-      alert('Erro ao salvar lançamentos');
+      logger.error('Erro ao confirmar lançamento:', error);
+      alert('Erro ao confirmar lançamento');
     } finally {
-      setLaunchLoading(false);
+      setConfirmingProductId(null);
     }
+  };
+
+  // Salvar todos os pendentes de uma vez
+  const handleSaveLaunches = async () => {
+    if (!profile?.company_id || !profile?.id || !selectedLineForLaunch) return;
+
+    const pendentes = lineProducts.filter((p) => (launchData[p.id] || 0) > 0);
+    if (pendentes.length === 0) {
+      setIsLancamentoModalOpen(false);
+      return;
+    }
+
+    setLaunchLoading(true);
+    for (const product of pendentes) {
+      await handleConfirmLaunch(product);
+    }
+    setLaunchLoading(false);
+    alert('Lançamentos salvos com sucesso!');
   };
 
 
@@ -759,9 +811,12 @@ export default function LinhasPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {lineProducts.map((product) => {
-                    const quantidade = launchData[product.id] || 0;
-                    const consumo = consumptionData[product.id] || 0;
-                    const custoTotal = quantidade * product.price;
+                    const lancamento = launchData[product.id] || 0;
+                    const consumoAnterior = consumptionData[product.id] || 0;
+                    // Consumo = acumulado anterior + lançamento atual
+                    const consumoTotal = consumoAnterior + lancamento;
+                    // Custo Total = Consumo total × Valor Unitário
+                    const custoTotal = consumoTotal * product.price;
 
                     return (
                       <tr key={product.id} className="hover:bg-gray-50">
@@ -776,13 +831,34 @@ export default function LinhasPage() {
                               step="0.01"
                               value={launchData[product.id] || 0}
                               onChange={(e) => handleQuantityChange(product.id, e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmLaunch(product); }}
                               className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary-500"
                             />
-                            <Check className="w-5 h-5 text-green-500" />
+                            <button
+                              onClick={() => handleConfirmLaunch(product)}
+                              disabled={confirmingProductId === product.id || (launchData[product.id] || 0) <= 0}
+                              className="p-1 rounded-full hover:bg-green-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Confirmar lançamento (Enter)"
+                            >
+                              {confirmingProductId === product.id ? (
+                                <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Check className="w-5 h-5 text-green-500" />
+                              )}
+                            </button>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center text-sm text-gray-900">
-                          {consumo > 0 ? consumo.toFixed(2) : '-'}
+                        <td className="px-4 py-3 text-center text-sm">
+                          <div className="flex flex-col items-center">
+                            <span className="font-medium text-gray-900">
+                              {consumoTotal > 0 ? consumoTotal.toFixed(2) : '0.00'}
+                            </span>
+                            {lancamento > 0 && (
+                              <span className="text-xs text-green-500">
+                                +{lancamento.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-gray-900">
                           {formatCurrency(product.price)}

@@ -329,3 +329,124 @@ export interface ProductLaunch {
 export interface ChemicalProductLaunchWithProduct extends ChemicalProductLaunch {
   chemical_product?: ChemicalProduct;
 }
+
+// =====================================================
+// CUSTOS VARIÁVEIS (Energia, Telefone)
+// =====================================================
+
+export type CustoVariavelCategoria = 'ENERGIA' | 'TELEFONE';
+
+export interface CustoVariavel {
+  id: string;
+  company_id: string;
+  categoria: CustoVariavelCategoria;
+  descricao: string;
+  valor: number;
+  data: string;
+  observacao?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// =====================================================
+// OUTROS CUSTOS
+// =====================================================
+
+export type OutroCustoCategoria =
+  | 'EPI'
+  | 'MANUT_CORRETIVA'
+  | 'VALE_REFEICAO'
+  | 'MATERIAL_ESCRITORIO'
+  | 'REAGENTES_LAB'
+  | 'CUSTO_ADM'
+  | 'ALIMENTACAO'
+  | 'OUTROS';
+
+export interface OutroCusto {
+  id: string;
+  company_id: string;
+  categoria: OutroCustoCategoria;
+  descricao: string;
+  valor: number;
+  mes: number;
+  ano: number;
+  observacao?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// =====================================================
+// TRANSPORTE
+// =====================================================
+
+export interface Transporte {
+  id: string;
+  company_id: string;
+  descricao: string;
+  valor: number;
+  mes: number;
+  ano: number;
+  observacao?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// =====================================================
+// INVESTIMENTOS (Depreciação)
+// =====================================================
+
+export interface Investimento {
+  id: string;
+  company_id: string;
+  production_line_id?: string;
+  equipamento: string;
+  descricao?: string;
+  valor_investimento: number;
+  depreciacao_meses: number;
+  data_aquisicao: string;
+  data_vencimento?: string;
+  valor_mensal: number;
+  observacao?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvestimentoWithLine extends Investimento {
+  production_line?: ProductionLine;
+}
+
+// =====================================================
+// PEÇAS POR HORA (Cálculos Eletroquímicos)
+// =====================================================
+
+export interface PecaHora {
+  id: string;
+  company_id: string;
+  production_line_id: string;
+  area_peca_dm2: number;
+  peso_peca_kg: number;
+  kg_por_carga: number;
+  peso_especifico: number;
+  equivalente_eletroquimico: number;
+  rendimento_corrente: number;
+  espessura_mm: number;
+  amperagem: number;
+  numero_tambores: number;
+  densidade_corrente: number;
+  pecas_por_carga: number;
+  area_carga_dm2: number;
+  pecas_por_hora: number;
+  kg_por_hora: number;
+  tempo_banho_min: number;
+  observacao?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PecaHoraWithLine extends PecaHora {
+  production_line?: ProductionLine;
+}
