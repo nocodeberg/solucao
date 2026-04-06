@@ -87,35 +87,35 @@ export default function ResumoPage() {
       // M.O. do ano
       const { data: moData } = await supabase.from('lancamento_mo').select('tipo, custo_mensal, mes, production_line_id').eq('company_id', cid).eq('ano', selectedYear).returns<MoRow[]>();
       let totalMOD = 0, totalMOI = 0;
-      moData?.forEach((i) => { if (i.tipo === 'MOD') totalMOD += parseFloat(i.custo_mensal.toString()); else totalMOI += parseFloat(i.custo_mensal.toString()); });
+      moData?.forEach((i) => { if (i.tipo === 'MOD') totalMOD += parseFloat(String(i.custo_mensal ?? 0)); else totalMOI += parseFloat(String(i.custo_mensal ?? 0)); });
 
       // Manutenção do ano
       const { data: manutData } = await supabase.from('manutencao').select('valor, data').eq('company_id', cid).gte('data', `${selectedYear}-01-01`).lte('data', `${selectedYear}-12-31`).returns<ValorDateRow[]>();
-      const totalManutencao = manutData?.reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
+      const totalManutencao = manutData?.reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
 
       // Água do ano
       const { data: aguaData } = await supabase.from('consumo_agua').select('valor, data').eq('company_id', cid).gte('data', `${selectedYear}-01-01`).lte('data', `${selectedYear}-12-31`).returns<ValorDateRow[]>();
-      const totalAgua = aguaData?.reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
+      const totalAgua = aguaData?.reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
 
       // Produtos lançados do ano
       const { data: launchData } = await supabase.from('product_launches').select('custo_total, mes, production_line_id').eq('company_id', cid).eq('ano', selectedYear).returns<ProductLaunchRow[]>();
-      const totalProdutosLancados = launchData?.reduce((s, i) => s + parseFloat(i.custo_total.toString()), 0) || 0;
+      const totalProdutosLancados = launchData?.reduce((s, i) => s + parseFloat(String(i.custo_total ?? 0)), 0) || 0;
 
       // Custos variáveis do ano (energia + telefone)
       const { data: cvData } = await supabase.from('custos_variaveis').select('valor, data').eq('company_id', cid).gte('data', `${selectedYear}-01-01`).lte('data', `${selectedYear}-12-31`).returns<ValorDateRow[]>();
-      const totalCustosVariaveis = (cvData?.reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0) + totalAgua;
+      const totalCustosVariaveis = (cvData?.reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0) + totalAgua;
 
       // Outros custos do ano
       const { data: ocData } = await supabase.from('outros_custos').select('valor, mes').eq('company_id', cid).eq('ano', selectedYear).returns<ValorMesRow[]>();
-      const totalOutrosCustos = ocData?.reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
+      const totalOutrosCustos = ocData?.reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
 
       // Transporte do ano
       const { data: tpData } = await supabase.from('transporte').select('valor, mes').eq('company_id', cid).eq('ano', selectedYear).returns<ValorMesRow[]>();
-      const totalTransporte = tpData?.reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
+      const totalTransporte = tpData?.reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
 
       // Investimentos (depreciação mensal * 12 para total anual)
       const { data: invData } = await supabase.from('investimentos').select('valor_mensal, production_line_id').eq('company_id', cid).returns<InvRow[]>();
-      const totalInvestimentos = (invData?.reduce((s, i) => s + parseFloat(i.valor_mensal.toString()), 0) || 0) * 12;
+      const totalInvestimentos = (invData?.reduce((s, i) => s + parseFloat(String(i.valor_mensal ?? 0)), 0) || 0) * 12;
 
       const totalGeral = totalProdutosLancados + totalMOD + totalMOI + totalCustosVariaveis + totalOutrosCustos + totalTransporte + totalManutencao + totalInvestimentos;
 
@@ -127,10 +127,10 @@ export default function ResumoPage() {
       const tpMensal = totalTransporte / 12;
       const manutMensal = totalManutencao / 12;
       const custoHoraPorLinha = (linhas || []).map((l: any) => {
-        const modLinha = moData?.filter(m => m.tipo === 'MOD' && m.production_line_id === l.id).reduce((s, m) => s + parseFloat(m.custo_mensal.toString()), 0) || 0;
-        const pqLinha = launchData?.filter(p => p.production_line_id === l.id).reduce((s, p) => s + parseFloat(p.custo_total.toString()), 0) || 0;
-        const invLinha = invData?.filter(i => i.production_line_id === l.id).reduce((s, i) => s + parseFloat(i.valor_mensal.toString()), 0) || 0;
-        const invGeral = invData?.filter(i => !i.production_line_id).reduce((s, i) => s + parseFloat(i.valor_mensal.toString()), 0) || 0;
+        const modLinha = moData?.filter(m => m.tipo === 'MOD' && m.production_line_id === l.id).reduce((s, m) => s + parseFloat(String(m.custo_mensal ?? 0)), 0) || 0;
+        const pqLinha = launchData?.filter(p => p.production_line_id === l.id).reduce((s, p) => s + parseFloat(String(p.custo_total ?? 0)), 0) || 0;
+        const invLinha = invData?.filter(i => i.production_line_id === l.id).reduce((s, i) => s + parseFloat(String(i.valor_mensal ?? 0)), 0) || 0;
+        const invGeral = invData?.filter(i => !i.production_line_id).reduce((s, i) => s + parseFloat(String(i.valor_mensal ?? 0)), 0) || 0;
 
         const custoMensal = (pqLinha / 12) + (modLinha / 12) + (moiMensal / nLinhas) + (cvMensal / nLinhas) + (ocMensal / nLinhas) + (tpMensal / nLinhas) + (manutMensal / nLinhas) + invLinha + (invGeral / nLinhas);
         const custoHora = HORAS_TRABALHADAS > 0 ? custoMensal / HORAS_TRABALHADAS : 0;
@@ -140,15 +140,15 @@ export default function ResumoPage() {
 
       // Chart data por mês
       const chartData = MONTHS.map((month) => {
-        const mod = moData?.filter(i => i.mes === month.value && i.tipo === 'MOD').reduce((s, i) => s + parseFloat(i.custo_mensal.toString()), 0) || 0;
-        const moi = moData?.filter(i => i.mes === month.value && i.tipo === 'MOI').reduce((s, i) => s + parseFloat(i.custo_mensal.toString()), 0) || 0;
-        const manut = manutData?.filter(i => parseInt(i.data.split('-')[1]) === month.value).reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
-        const agua = aguaData?.filter(i => parseInt(i.data.split('-')[1]) === month.value).reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
-        const cv = cvData?.filter(i => parseInt(i.data.split('-')[1]) === month.value).reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
-        const oc = ocData?.filter(i => i.mes === month.value).reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
-        const tp = tpData?.filter(i => i.mes === month.value).reduce((s, i) => s + parseFloat(i.valor.toString()), 0) || 0;
-        const pq = launchData?.filter(i => i.mes === month.value).reduce((s, i) => s + parseFloat(i.custo_total.toString()), 0) || 0;
-        const inv = (invData?.reduce((s, i) => s + parseFloat(i.valor_mensal.toString()), 0) || 0);
+        const mod = moData?.filter(i => i.mes === month.value && i.tipo === 'MOD').reduce((s, i) => s + parseFloat(String(i.custo_mensal ?? 0)), 0) || 0;
+        const moi = moData?.filter(i => i.mes === month.value && i.tipo === 'MOI').reduce((s, i) => s + parseFloat(String(i.custo_mensal ?? 0)), 0) || 0;
+        const manut = manutData?.filter(i => parseInt(i.data.split('-')[1]) === month.value).reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
+        const agua = aguaData?.filter(i => parseInt(i.data.split('-')[1]) === month.value).reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
+        const cv = cvData?.filter(i => parseInt(i.data.split('-')[1]) === month.value).reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
+        const oc = ocData?.filter(i => i.mes === month.value).reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
+        const tp = tpData?.filter(i => i.mes === month.value).reduce((s, i) => s + parseFloat(String(i.valor ?? 0)), 0) || 0;
+        const pq = launchData?.filter(i => i.mes === month.value).reduce((s, i) => s + parseFloat(String(i.custo_total ?? 0)), 0) || 0;
+        const inv = (invData?.reduce((s, i) => s + parseFloat(String(i.valor_mensal ?? 0)), 0) || 0);
 
         return {
           mes: month.label,

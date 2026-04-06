@@ -107,8 +107,8 @@ export default function CustosVariaveisPage() {
   };
 
   // Totais por categoria
-  const totalEnergia = registros.filter(r => r.categoria === 'ENERGIA').reduce((s, r) => s + parseFloat(r.valor.toString()), 0);
-  const totalTelefone = registros.filter(r => r.categoria === 'TELEFONE').reduce((s, r) => s + parseFloat(r.valor.toString()), 0);
+  const totalEnergia = registros.filter(r => r.categoria === 'ENERGIA').reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0);
+  const totalTelefone = registros.filter(r => r.categoria === 'TELEFONE').reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0);
   const totalGeral = totalEnergia + totalTelefone;
 
   // Resumo mensal
@@ -119,8 +119,8 @@ export default function CustosVariaveisPage() {
     });
     return {
       mes: m.label,
-      energia: mesRegistros.filter(r => r.categoria === 'ENERGIA').reduce((s, r) => s + parseFloat(r.valor.toString()), 0),
-      telefone: mesRegistros.filter(r => r.categoria === 'TELEFONE').reduce((s, r) => s + parseFloat(r.valor.toString()), 0),
+      energia: mesRegistros.filter(r => r.categoria === 'ENERGIA').reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0),
+      telefone: mesRegistros.filter(r => r.categoria === 'TELEFONE').reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0),
     };
   });
 
@@ -142,7 +142,7 @@ export default function CustosVariaveisPage() {
       key: 'valor',
       label: 'Valor',
       sortable: true,
-      render: (r) => formatCurrency(parseFloat(r.valor.toString())),
+      render: (r) => formatCurrency(parseFloat(String(r.valor ?? 0))),
     },
     {
       key: 'id',

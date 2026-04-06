@@ -120,13 +120,13 @@ export default function PecasPage() {
       key: 'area_dm2',
       label: 'Área (dm²)',
       sortable: true,
-      render: (peca) => `${parseFloat(peca.area_dm2.toString()).toFixed(2)} dm²`,
+      render: (peca) => `${parseFloat(String(peca.area_dm2 ?? 0)).toFixed(2)} dm²`,
     },
     {
       key: 'weight_kg',
       label: 'Peso (kg)',
       sortable: true,
-      render: (peca) => `${parseFloat(peca.weight_kg.toString()).toFixed(2)} kg`,
+      render: (peca) => `${parseFloat(String(peca.weight_kg ?? 0)).toFixed(2)} kg`,
     },
     {
       key: 'production_type',
@@ -158,7 +158,7 @@ export default function PecasPage() {
         <DataTable
           data={pecas}
           columns={columns}
-          keyExtractor={(peca) => peca.id.toString()}
+          keyExtractor={(peca) => String(peca.id)}
           searchKeys={['name', 'production_type']}
           emptyMessage="Nenhuma peça cadastrada"
         />

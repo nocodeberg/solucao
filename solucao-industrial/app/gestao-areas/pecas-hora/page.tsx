@@ -103,16 +103,16 @@ export default function PecasHoraPage() {
     setEditingId(r.id);
     setFormData({
       production_line_id: r.production_line_id,
-      area_peca_dm2: parseFloat(r.area_peca_dm2.toString()),
-      peso_peca_kg: parseFloat(r.peso_peca_kg.toString()),
-      kg_por_carga: parseFloat(r.kg_por_carga.toString()),
-      peso_especifico: parseFloat(r.peso_especifico.toString()),
-      equivalente_eletroquimico: parseFloat(r.equivalente_eletroquimico.toString()),
-      rendimento_corrente: parseFloat(r.rendimento_corrente.toString()),
-      espessura_mm: parseFloat(r.espessura_mm.toString()),
-      amperagem: parseFloat(r.amperagem.toString()),
+      area_peca_dm2: parseFloat(String(r.area_peca_dm2 ?? 0)),
+      peso_peca_kg: parseFloat(String(r.peso_peca_kg ?? 0)),
+      kg_por_carga: parseFloat(String(r.kg_por_carga ?? 0)),
+      peso_especifico: parseFloat(String(r.peso_especifico ?? 0)),
+      equivalente_eletroquimico: parseFloat(String(r.equivalente_eletroquimico ?? 0)),
+      rendimento_corrente: parseFloat(String(r.rendimento_corrente ?? 0)),
+      espessura_mm: parseFloat(String(r.espessura_mm ?? 0)),
+      amperagem: parseFloat(String(r.amperagem ?? 0)),
       numero_tambores: r.numero_tambores,
-      densidade_corrente: parseFloat(r.densidade_corrente.toString()),
+      densidade_corrente: parseFloat(String(r.densidade_corrente ?? 0)),
     });
     setFormErrors({});
     setIsModalOpen(true);
@@ -196,19 +196,19 @@ export default function PecasHoraPage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-gray-500 text-xs">Área da Peça</p>
-                  <p className="font-semibold">{fmt(parseFloat(r.area_peca_dm2.toString()), 4)} dm²</p>
+                  <p className="font-semibold">{fmt(parseFloat(String(r.area_peca_dm2 ?? 0)), 4)} dm²</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-gray-500 text-xs">Peso da Peça</p>
-                  <p className="font-semibold">{fmt(parseFloat(r.peso_peca_kg.toString()), 4)} kg</p>
+                  <p className="font-semibold">{fmt(parseFloat(String(r.peso_peca_kg ?? 0)), 4)} kg</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-gray-500 text-xs">Peças/Carga</p>
-                  <p className="font-semibold">{fmt(parseFloat(r.pecas_por_carga.toString()))}</p>
+                  <p className="font-semibold">{fmt(parseFloat(String(r.pecas_por_carga ?? 0)))}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-gray-500 text-xs">Área Carga</p>
-                  <p className="font-semibold">{fmt(parseFloat(r.area_carga_dm2.toString()))} dm²</p>
+                  <p className="font-semibold">{fmt(parseFloat(String(r.area_carga_dm2 ?? 0)))} dm²</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-gray-500 text-xs">Nº Tambores</p>
@@ -216,18 +216,18 @@ export default function PecasHoraPage() {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-gray-500 text-xs">Tempo de Banho</p>
-                  <p className="font-semibold">{fmt(parseFloat(r.tempo_banho_min.toString()))} min</p>
+                  <p className="font-semibold">{fmt(parseFloat(String(r.tempo_banho_min ?? 0)))} min</p>
                 </div>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                   <p className="text-blue-600 text-xs font-medium">Peças por Hora</p>
-                  <p className="text-xl font-bold text-blue-900">{fmt(parseFloat(r.pecas_por_hora.toString()))}</p>
+                  <p className="text-xl font-bold text-blue-900">{fmt(parseFloat(String(r.pecas_por_hora ?? 0)))}</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                   <p className="text-green-600 text-xs font-medium">Kg por Hora</p>
-                  <p className="text-xl font-bold text-green-900">{fmt(parseFloat(r.kg_por_hora.toString()))}</p>
+                  <p className="text-xl font-bold text-green-900">{fmt(parseFloat(String(r.kg_por_hora ?? 0)))}</p>
                 </div>
               </div>
             </div>

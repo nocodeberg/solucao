@@ -110,12 +110,12 @@ export default function OutrosCustosPage() {
     }
   };
 
-  const totalGeral = registros.reduce((s, r) => s + parseFloat(r.valor.toString()), 0);
+  const totalGeral = registros.reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0);
 
   // Resumo por categoria
   const resumoCategoria = CATEGORIAS.map(cat => ({
     categoria: cat.label,
-    total: registros.filter(r => r.categoria === cat.value).reduce((s, r) => s + parseFloat(r.valor.toString()), 0),
+    total: registros.filter(r => r.categoria === cat.value).reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0),
   })).filter(r => r.total > 0);
 
   const columns: Column<OutroCusto>[] = [
@@ -136,7 +136,7 @@ export default function OutrosCustosPage() {
       key: 'valor',
       label: 'Valor',
       sortable: true,
-      render: (r) => formatCurrency(parseFloat(r.valor.toString())),
+      render: (r) => formatCurrency(parseFloat(String(r.valor ?? 0))),
     },
     {
       key: 'id',

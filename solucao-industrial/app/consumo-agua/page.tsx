@@ -102,7 +102,7 @@ export default function ConsumoAguaPage() {
 
   // Total de custos
   const totalConsumo = registros.reduce(
-    (sum, reg) => sum + parseFloat(reg.valor.toString()),
+    (sum, reg) => sum + parseFloat(String(reg.valor ?? 0)),
     0
   );
 
@@ -118,7 +118,7 @@ export default function ConsumoAguaPage() {
       key: 'valor',
       label: 'Valor',
       sortable: true,
-      render: (reg) => formatCurrency(parseFloat(reg.valor.toString())),
+      render: (reg) => formatCurrency(parseFloat(String(reg.valor ?? 0))),
     },
     {
       key: 'observacao',

@@ -95,12 +95,12 @@ export default function TransportePage() {
     }
   };
 
-  const totalGeral = registros.reduce((s, r) => s + parseFloat(r.valor.toString()), 0);
+  const totalGeral = registros.reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0);
 
   // Resumo mensal
   const resumoMensal = MONTHS.map(m => ({
     mes: m.label,
-    total: registros.filter(r => r.mes === m.value).reduce((s, r) => s + parseFloat(r.valor.toString()), 0),
+    total: registros.filter(r => r.mes === m.value).reduce((s, r) => s + parseFloat(String(r.valor ?? 0)), 0),
   }));
 
   const columns: Column<Transporte>[] = [
@@ -115,7 +115,7 @@ export default function TransportePage() {
       key: 'valor',
       label: 'Valor',
       sortable: true,
-      render: (r) => formatCurrency(parseFloat(r.valor.toString())),
+      render: (r) => formatCurrency(parseFloat(String(r.valor ?? 0))),
     },
     { key: 'observacao', label: 'Observação', render: (r) => r.observacao || '-' },
     {

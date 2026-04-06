@@ -46,7 +46,7 @@ export default function Select({
   // Filter options based on search
   const filteredOptions = searchable
     ? options.filter((option) =>
-        option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        (option.label || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     : options;
 
@@ -227,7 +227,7 @@ export function MultiSelect({
 
   const filteredOptions = searchable
     ? options.filter((option) =>
-        option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        (option.label || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     : options;
 

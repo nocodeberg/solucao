@@ -481,13 +481,25 @@ export const products = {
 // =====================================================
 // API COMPLETA - EMPLOYEES
 // =====================================================
+// Mapeamento DB (inglês) → TypeScript (português) para employees
+const EMPLOYEE_SELECT = 'id, company_id, cargo_id, nome:full_name, cpf, email, telefone:phone, salario_base:salary, data_admissao:admission_date, foto_url:avatar_url, active, created_at, updated_at';
+const mapEmployeeToDb = (data: any) => {
+  const mapped: any = { ...data };
+  if ('nome' in mapped) { mapped.full_name = mapped.nome; delete mapped.nome; }
+  if ('salario_base' in mapped) { mapped.salary = mapped.salario_base; delete mapped.salario_base; }
+  if ('data_admissao' in mapped) { mapped.admission_date = mapped.data_admissao; delete mapped.data_admissao; }
+  if ('telefone' in mapped) { mapped.phone = mapped.telefone; delete mapped.telefone; }
+  if ('foto_url' in mapped) { mapped.avatar_url = mapped.foto_url; delete mapped.foto_url; }
+  return mapped;
+};
+
 export const employees = {
   list: async (params?: { active?: boolean; cargo_id?: string; search?: string }) => {
     try {
       const profile = await getCurrentProfile();
       let query = supabaseAdmin
         .from('employees')
-        .select('*')
+        .select(EMPLOYEE_SELECT)
         .eq('company_id', profile.company_id);
 
       if (params?.active !== undefined) {
@@ -512,10 +524,11 @@ export const employees = {
   create: async (data: any) => {
     try {
       const profile = await getCurrentProfile();
+      const dbData = mapEmployeeToDb(data);
       const { data: result, error } = await supabaseAdmin
         .from('employees')
-        .insert({ ...data, company_id: profile.company_id })
-        .select()
+        .insert({ ...dbData, company_id: profile.company_id })
+        .select(EMPLOYEE_SELECT)
         .single();
 
       if (error) throw error;
@@ -529,12 +542,13 @@ export const employees = {
   update: async (id: string, data: any) => {
     try {
       const profile = await getCurrentProfile();
+      const dbData = mapEmployeeToDb(data);
       const { data: result, error } = await supabaseAdmin
         .from('employees')
-        .update(data)
+        .update(dbData)
         .eq('id', id)
         .eq('company_id', profile.company_id)
-        .select()
+        .select(EMPLOYEE_SELECT)
         .single();
 
       if (error) throw error;
@@ -565,13 +579,22 @@ export const employees = {
 // =====================================================
 // API COMPLETA - CARGOS
 // =====================================================
+// Mapeamento DB (inglês) → TypeScript (português) para cargos
+const CARGO_SELECT = 'id, company_id, nome:name, descricao:description, created_at, updated_at';
+const mapCargoToDb = (data: any) => {
+  const mapped: any = { ...data };
+  if ('nome' in mapped) { mapped.name = mapped.nome; delete mapped.nome; }
+  if ('descricao' in mapped) { mapped.description = mapped.descricao; delete mapped.descricao; }
+  return mapped;
+};
+
 export const cargos = {
   list: async () => {
     try {
       const profile = await getCurrentProfile();
       const { data, error } = await supabaseAdmin
         .from('cargos')
-        .select('*')
+        .select(CARGO_SELECT)
         .eq('company_id', profile.company_id)
         .order('name');
 
@@ -586,10 +609,11 @@ export const cargos = {
   create: async (data: any) => {
     try {
       const profile = await getCurrentProfile();
+      const dbData = mapCargoToDb(data);
       const { data: result, error } = await supabaseAdmin
         .from('cargos')
-        .insert({ ...data, company_id: profile.company_id })
-        .select()
+        .insert({ ...dbData, company_id: profile.company_id })
+        .select(CARGO_SELECT)
         .single();
 
       if (error) throw error;
@@ -603,12 +627,13 @@ export const cargos = {
   update: async (id: string, data: any) => {
     try {
       const profile = await getCurrentProfile();
+      const dbData = mapCargoToDb(data);
       const { data: result, error } = await supabaseAdmin
         .from('cargos')
-        .update(data)
+        .update(dbData)
         .eq('id', id)
         .eq('company_id', profile.company_id)
-        .select()
+        .select(CARGO_SELECT)
         .single();
 
       if (error) throw error;
@@ -639,13 +664,23 @@ export const cargos = {
 // =====================================================
 // API COMPLETA - ENCARGOS
 // =====================================================
+// Mapeamento DB (inglês) → TypeScript (português) para encargos
+const ENCARGO_SELECT = 'id, company_id, nome:name, percentual:value, descricao:description, is_percentage, created_at, updated_at';
+const mapEncargoToDb = (data: any) => {
+  const mapped: any = { ...data };
+  if ('nome' in mapped) { mapped.name = mapped.nome; delete mapped.nome; }
+  if ('percentual' in mapped) { mapped.value = mapped.percentual; delete mapped.percentual; }
+  if ('descricao' in mapped) { mapped.description = mapped.descricao; delete mapped.descricao; }
+  return mapped;
+};
+
 export const encargos = {
   list: async () => {
     try {
       const profile = await getCurrentProfile();
       const { data, error } = await supabaseAdmin
         .from('encargos')
-        .select('*')
+        .select(ENCARGO_SELECT)
         .eq('company_id', profile.company_id)
         .order('name');
 
@@ -660,10 +695,11 @@ export const encargos = {
   create: async (data: any) => {
     try {
       const profile = await getCurrentProfile();
+      const dbData = mapEncargoToDb(data);
       const { data: result, error } = await supabaseAdmin
         .from('encargos')
-        .insert({ ...data, company_id: profile.company_id })
-        .select()
+        .insert({ ...dbData, company_id: profile.company_id })
+        .select(ENCARGO_SELECT)
         .single();
 
       if (error) throw error;
@@ -677,12 +713,13 @@ export const encargos = {
   update: async (id: string, data: any) => {
     try {
       const profile = await getCurrentProfile();
+      const dbData = mapEncargoToDb(data);
       const { data: result, error } = await supabaseAdmin
         .from('encargos')
-        .update(data)
+        .update(dbData)
         .eq('id', id)
         .eq('company_id', profile.company_id)
-        .select()
+        .select(ENCARGO_SELECT)
         .single();
 
       if (error) throw error;

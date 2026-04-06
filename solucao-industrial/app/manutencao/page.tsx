@@ -116,7 +116,7 @@ export default function ManutencaoPage() {
 
   // Total de custos
   const totalManutencao = registros.reduce(
-    (sum, reg) => sum + parseFloat(reg.valor.toString()),
+    (sum, reg) => sum + parseFloat(String(reg.valor ?? 0)),
     0
   );
 
@@ -140,7 +140,7 @@ export default function ManutencaoPage() {
       key: 'valor',
       label: 'Valor',
       sortable: true,
-      render: (reg) => formatCurrency(parseFloat(reg.valor.toString())),
+      render: (reg) => formatCurrency(parseFloat(String(reg.valor ?? 0))),
     },
     {
       key: 'observacao',

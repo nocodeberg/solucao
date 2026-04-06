@@ -201,7 +201,7 @@ export default function DashboardPage() {
       const { data: manutencaoData } = await manutencaoQuery.returns<ManutencaoRow[]>();
       const manutencaoTotal =
         manutencaoData?.reduce(
-          (sum, item) => sum + parseFloat(item.valor),
+          (sum, item) => sum + parseFloat(String(item.valor ?? 0)),
           0
         ) || 0;
 

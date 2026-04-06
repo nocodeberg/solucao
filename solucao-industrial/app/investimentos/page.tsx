@@ -110,8 +110,8 @@ export default function InvestimentosPage() {
     }
   };
 
-  const totalInvestimento = registros.reduce((s, r) => s + parseFloat(r.valor_investimento.toString()), 0);
-  const totalMensal = registros.reduce((s, r) => s + parseFloat(r.valor_mensal.toString()), 0);
+  const totalInvestimento = registros.reduce((s, r) => s + parseFloat(String(r.valor_investimento ?? 0)), 0);
+  const totalMensal = registros.reduce((s, r) => s + parseFloat(String(r.valor_mensal ?? 0)), 0);
 
   // Verificar status: vencido ou ativo
   const hoje = new Date().toISOString().split('T')[0];
@@ -135,7 +135,7 @@ export default function InvestimentosPage() {
       key: 'valor_investimento',
       label: 'Investimento',
       sortable: true,
-      render: (r) => formatCurrency(parseFloat(r.valor_investimento.toString())),
+      render: (r) => formatCurrency(parseFloat(String(r.valor_investimento ?? 0))),
     },
     {
       key: 'depreciacao_meses',
@@ -146,7 +146,7 @@ export default function InvestimentosPage() {
       key: 'valor_mensal',
       label: 'Valor/Mês',
       sortable: true,
-      render: (r) => formatCurrency(parseFloat(r.valor_mensal.toString())),
+      render: (r) => formatCurrency(parseFloat(String(r.valor_mensal ?? 0))),
     },
     {
       key: 'data_aquisicao',
