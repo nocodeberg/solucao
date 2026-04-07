@@ -226,6 +226,13 @@ export interface LancamentoMO {
   horas_trabalhadas?: number;
   salario_base: number;
   custo_mensal: number;
+  horas_extra_50?: number;
+  horas_extra_100?: number;
+  por_fora?: number;
+  insalubridade?: boolean;
+  valor_hora_extra?: number;
+  valor_insalubridade?: number;
+  total_encargos?: number;
   observacao?: string;
   created_by?: string;
   created_at: string;

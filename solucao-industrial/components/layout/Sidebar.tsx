@@ -34,6 +34,7 @@ interface MenuItem {
   href?: string;
   children?: MenuItem[];
   roles?: string[];
+  hidden?: boolean;
 }
 
 export default function Sidebar() {
@@ -180,6 +181,7 @@ export default function Sidebar() {
       id: 'custos',
       label: 'Custos',
       icon: <Receipt className="w-5 h-5" />,
+      hidden: true,
       children: [
         {
           id: 'custos-variaveis',
@@ -290,6 +292,7 @@ export default function Sidebar() {
   };
 
   const renderMenuItem = (item: MenuItem, level: number = 0) => {
+    if (item.hidden) return null;
     if (!hasAccess(item.roles)) return null;
 
     const isExpanded = expandedItems.includes(item.id);
