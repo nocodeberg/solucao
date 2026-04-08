@@ -171,6 +171,8 @@ export interface Piece {
   id: number;
   company_id: string;
   group_id?: string;
+  group_ids?: string[];
+  codigo?: string;
   name: string;
   area_dm2: number;
   weight_kg: number;

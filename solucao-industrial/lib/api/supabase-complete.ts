@@ -888,16 +888,161 @@ export const pieces = {
   create: async (data: any) => {
     try {
       const profile = await getCurrentProfile();
+      const base: Record<string, unknown> = {
+        company_id: profile.company_id,
+        name: data.name,
+        area_dm2: data.area_dm2,
+        weight_kg: data.weight_kg,
+      };
+      if (data.production_type) base.production_type = data.production_type;
+      if (data.group_ids?.length > 0) base.group_id = data.group_ids[0];
+
+      // Tenta com todos os campos (codigo + group_ids)
+      const full: Record<string, unknown> = { ...base };
+      if (data.codigo) full.codigo = data.codigo;
+      if (data.group_ids?.length > 0) full.group_ids = data.group_ids;
+
+      const { data: r1, error: e1 } = await supabaseAdmin
+        .from('pieces').insert(full).select().single();
+      if (!e1) return r1;
+
+      // Fallback sem group_ids (coluna pode não existir)
+      const withCodigo: Record<string, unknown> = { ...base };
+      if (data.codigo) withCodigo.codigo = data.codigo;
+      const { data: r2, error: e2 } = await supabaseAdmin
+        .from('pieces').insert(withCodigo).select().single();
+      if (!e2) return r2;
+
+      // Fallback sem codigo (coluna pode não existir)
+      const withGroupIds: Record<string, unknown> = { ...base };
+      if (data.group_ids?.length > 0) withGroupIds.group_ids = data.group_ids;
+      const { data: r3, error: e3 } = await supabaseAdmin
+        .from('pieces').insert(withGroupIds).select().single();
+      if (!e3) return r3;
+
+      // Fallback mínimo (só campos originais)
+      const { data: r4, error: e4 } = await supabaseAdmin
+        .from('pieces').insert(base).select().single();
+      if (e4) throw e4;
+      return r4;
+    } catch (error) {
+      console.error('Erro em pieces.create:', error);
+      throw error;
+    }
+  },
+
+  update: async (id: number, data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const dbData: Record<string, unknown> = {
+        name: data.name,
+        area_dm2: data.area_dm2,
+        weight_kg: data.weight_kg,
+      };
+      if (data.production_type !== undefined) dbData.production_type = data.production_type;
+      if (data.codigo !== undefined) dbData.codigo = data.codigo;
+      if (data.group_ids) {
+        dbData.group_ids = data.group_ids;
+        dbData.group_id = data.group_ids.length > 0 ? data.group_ids[0] : null;
+      }
+
       const { data: result, error } = await supabaseAdmin
         .from('pieces')
-        .insert({ ...data, company_id: profile.company_id })
+        .update(dbData)
+        .eq('id', id)
+        .eq('company_id', profile.company_id)
+        .select()
+        .single();
+
+      if (error) {
+        // Fallback sem group_ids/codigo
+        const fallback: Record<string, unknown> = {
+          name: data.name,
+          area_dm2: data.area_dm2,
+          weight_kg: data.weight_kg,
+        };
+        if (data.production_type !== undefined) fallback.production_type = data.production_type;
+        if (data.group_ids?.length > 0) fallback.group_id = data.group_ids[0];
+        const { data: r2, error: e2 } = await supabaseAdmin
+          .from('pieces')
+          .update(fallback)
+          .eq('id', id)
+          .eq('company_id', profile.company_id)
+          .select()
+          .single();
+        if (e2) throw e2;
+        return r2;
+      }
+      return result;
+    } catch (error) {
+      console.error('Erro em pieces.update:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: number) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { error } = await supabaseAdmin
+        .from('pieces')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em pieces.delete:', error);
+      throw error;
+    }
+  },
+};
+
+// =====================================================
+// API COMPLETA - LANÇAMENTO DE PEÇAS
+// =====================================================
+export const lancamentoPecas = {
+  listByPiece: async (pieceId: number, ano: number) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data, error } = await supabaseAdmin
+        .from('lancamento_pecas')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('piece_id', pieceId)
+        .eq('ano', ano)
+        .order('mes');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro em lancamentoPecas.listByPiece:', error);
+      throw error;
+    }
+  },
+
+  upsert: async (pieceId: number, mes: number, ano: number, quantidade: number) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data, error } = await supabaseAdmin
+        .from('lancamento_pecas')
+        .upsert(
+          {
+            company_id: profile.company_id,
+            piece_id: pieceId,
+            mes,
+            ano,
+            quantidade,
+            created_by: profile.id,
+          },
+          { onConflict: 'company_id,piece_id,mes,ano' }
+        )
         .select()
         .single();
 
       if (error) throw error;
-      return result;
+      return data;
     } catch (error) {
-      console.error('Erro em pieces.create:', error);
+      console.error('Erro em lancamentoPecas.upsert:', error);
       throw error;
     }
   },
@@ -1460,6 +1605,7 @@ export const apiComplete = {
   consumoAgua,
   lancamentoMO,
   pieces,
+  lancamentoPecas,
   users,
   custosVariaveis,
   outrosCustos,
