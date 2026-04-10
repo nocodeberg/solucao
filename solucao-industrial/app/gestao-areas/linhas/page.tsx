@@ -61,7 +61,7 @@ export default function LinhasPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [launchData, setLaunchData] = useState<Record<string, number>>({});
   const [consumptionData, setConsumptionData] = useState<Record<string, number>>({});
-  const [launchLoading, setLaunchLoading] = useState(false);
+  const [savedPrices, setSavedPrices] = useState<Record<string, number>>({});
 
   // Linha modal
   const [isLinhaModalOpen, setIsLinhaModalOpen] = useState(false);
@@ -147,17 +147,35 @@ export default function LinhasPage() {
 
     const launches: Record<string, number> = {};
     const consumptions: Record<string, number> = {};
+    const prices: Record<string, number> = {};
 
     data?.forEach((launch: ProductLaunch) => {
+      const raw = launch as unknown as Record<string, unknown>;
       // Lançamento começa em 0 (é sempre uma nova entrada)
       launches[launch.product_id] = 0;
       // Consumo acumulado = total já lançado anteriormente
-      const acumulado = (launch as unknown as Record<string, unknown>).consumo_acumulado;
-      consumptions[launch.product_id] = parseFloat(String(acumulado ?? launch.consumo ?? 0));
+      const acumulado = raw.consumo_acumulado;
+      const consumo = parseFloat(String(acumulado ?? launch.consumo ?? 0));
+      consumptions[launch.product_id] = consumo;
+      // Preservar o custo_unitario salvo no lançamento
+      const custoUnit = raw.custo_unitario;
+      if (custoUnit !== undefined && custoUnit !== null && parseFloat(String(custoUnit)) > 0) {
+        prices[launch.product_id] = parseFloat(String(custoUnit));
+      } else if (consumo > 0) {
+        // Fallback: derivar preço original a partir de custo_total / consumo
+        const custoTotal = raw.custo_total;
+        if (custoTotal !== undefined && custoTotal !== null) {
+          const ct = parseFloat(String(custoTotal));
+          if (ct > 0) {
+            prices[launch.product_id] = ct / consumo;
+          }
+        }
+      }
     });
 
     setLaunchData(launches);
     setConsumptionData(consumptions);
+    setSavedPrices(prices);
   }, [profile?.company_id, selectedLineForLaunch, selectedMonth, selectedYear, supabase]);
 
   useEffect(() => {
@@ -314,12 +332,23 @@ export default function LinhasPage() {
     setLineProducts([]);
     setLaunchData({});
     setConsumptionData({});
+    setSavedPrices({});
     setSelectedLineForLaunch(linha);
     setSelectedMonth(currentMonth);
     setSelectedYear(currentYear);
 
+    // Recarregar produtos do banco para garantir preços atualizados
+    let produtosAtualizados = allProducts;
+    try {
+      const freshProducts = await apiComplete.products.list();
+      setAllProducts(freshProducts);
+      produtosAtualizados = freshProducts;
+    } catch {
+      logger.warn('Aviso: não foi possível recarregar produtos, usando cache local');
+    }
+
     // Buscar produtos de matéria-prima desta linha
-    const produtos = allProducts.filter(p => p.production_line_id === linha.id);
+    const produtos = produtosAtualizados.filter(p => p.production_line_id === linha.id);
 
     logger.log('=== 📦 PRODUTOS DE MATÉRIA-PRIMA ===');
     logger.log('Linha:', linha.name);
@@ -359,7 +388,13 @@ export default function LinhasPage() {
     try {
       const consumoAnterior = consumptionData[product.id] || 0;
       const novoConsumoAcumulado = consumoAnterior + lancamento;
-      const custo_total = novoConsumoAcumulado * product.price;
+      // Custo anterior preservado + novo lançamento com preço atual
+      const precoAntigo = savedPrices[product.id] !== undefined ? savedPrices[product.id] : product.price;
+      const custoAnterior = consumoAnterior * precoAntigo;
+      const custoNovoLancamento = lancamento * product.price;
+      const custo_total = custoAnterior + custoNovoLancamento;
+      // Preço médio ponderado para salvar no registro
+      const precoMedio = novoConsumoAcumulado > 0 ? custo_total / novoConsumoAcumulado : product.price;
 
       // 1. Salvar lançamento (upsert com onConflict na constraint UNIQUE)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -373,7 +408,7 @@ export default function LinhasPage() {
           quantidade: lancamento,
           consumo: lancamento,
           consumo_acumulado: novoConsumoAcumulado,
-          custo_unitario: product.price,
+          custo_unitario: precoMedio,
           custo_total,
           created_by: profile.id,
         }], { onConflict: 'product_id,mes,ano,production_line_id' });
@@ -410,6 +445,10 @@ export default function LinhasPage() {
         ...prev,
         [product.id]: novoConsumoAcumulado,
       }));
+      setSavedPrices((prev) => ({
+        ...prev,
+        [product.id]: precoMedio,
+      }));
       setLaunchData((prev) => ({
         ...prev,
         [product.id]: 0,
@@ -423,23 +462,6 @@ export default function LinhasPage() {
     }
   };
 
-  // Salvar todos os pendentes de uma vez
-  const handleSaveLaunches = async () => {
-    if (!profile?.company_id || !profile?.id || !selectedLineForLaunch) return;
-
-    const pendentes = lineProducts.filter((p) => (launchData[p.id] || 0) > 0);
-    if (pendentes.length === 0) {
-      setIsLancamentoModalOpen(false);
-      return;
-    }
-
-    setLaunchLoading(true);
-    for (const product of pendentes) {
-      await handleConfirmLaunch(product);
-    }
-    setLaunchLoading(false);
-    alert('Lançamentos salvos com sucesso!');
-  };
 
 
   return (
@@ -815,8 +837,11 @@ export default function LinhasPage() {
                     const consumoAnterior = consumptionData[product.id] || 0;
                     // Consumo = acumulado anterior + lançamento atual
                     const consumoTotal = consumoAnterior + lancamento;
-                    // Custo Total = Consumo total × Valor Unitário
-                    const custoTotal = consumoTotal * product.price;
+                    // Custo anterior (consumo já salvo × preço salvo) + novo lançamento × preço atual
+                    const precoAntigo = savedPrices[product.id] !== undefined ? savedPrices[product.id] : product.price;
+                    const custoAnterior = consumoAnterior * precoAntigo;
+                    const custoNovoLancamento = lancamento * product.price;
+                    const custoTotal = custoAnterior + custoNovoLancamento;
 
                     return (
                       <tr key={product.id} className="hover:bg-gray-50">
@@ -874,22 +899,6 @@ export default function LinhasPage() {
             </div>
           )}
 
-          {/* Botões de Ação */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              onClick={() => setIsLancamentoModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSaveLaunches}
-              disabled={launchLoading || lineProducts.length === 0}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {launchLoading ? 'Salvando...' : 'Salvar Lançamentos'}
-            </button>
-          </div>
         </div>
       </Modal>
 

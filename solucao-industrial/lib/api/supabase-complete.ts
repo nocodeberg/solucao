@@ -1090,50 +1090,28 @@ export const users = {
   create: async (data: any) => {
     try {
       const profile = await getCurrentProfile();
-      const payload = {
-        full_name: data.full_name,
-        email: data.email,
-        role: data.role,
-        active: data.active ?? true,
-        company_id: profile.company_id,
-      };
 
-      if (isBrowser) {
-        const { data: result, error } = await supabasePublic
-          .from('profiles')
-          .insert(payload)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return result;
-      }
-
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: data.email,
-        password: data.password,
-        email_confirm: true,
-        user_metadata: {
+      // Sempre usa API route (server-side) para criar auth user + profile
+      const response = await fetch('/api/users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           full_name: data.full_name,
-        },
+          email: data.email,
+          password: data.password,
+          role: data.role,
+          active: data.active ?? true,
+          company_id: profile.company_id,
+        }),
       });
 
-      if (authError) throw authError;
-      if (!authUser.user?.id) {
-        throw new Error('Falha ao criar usuário no Auth');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao criar usuário');
       }
 
-      const { data: result, error } = await supabaseAdmin
-        .from('profiles')
-        .upsert({
-          id: authUser.user.id,
-          ...payload,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
+      return result.user;
     } catch (error) {
       console.error('Erro em users.create:', error);
       throw error;
@@ -1177,11 +1155,17 @@ export const users = {
 
   resetPassword: async (id: string, new_password: string) => {
     try {
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(id, {
-        password: new_password,
+      const response = await fetch('/api/users/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: id, new_password }),
       });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao resetar senha');
+      }
     } catch (error) {
       console.error('Erro em users.resetPassword:', error);
       throw error;

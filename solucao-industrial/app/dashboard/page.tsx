@@ -13,7 +13,8 @@ import {
   Download,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatCurrency, MONTHS, getYearsList } from '@/lib/utils';
+import { formatCurrency, MONTHS, getYearsList, getMonthName } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ConsumoAgua, LancamentoMO, Manutencao, Employee, ProductionLine } from '@/types/database.types';
@@ -292,8 +293,205 @@ export default function DashboardPage() {
     return chartData.reduce((sum, item) => sum + (item[activeTab] || 0), 0);
   };
 
-  const handleExportExcel = () => {
-    alert('Funcionalidade de exportação será implementada');
+  const handleExportExcel = async () => {
+    if (!profile?.company_id) return;
+
+    try {
+      const wb = XLSX.utils.book_new();
+      const periodoLabel = showTotal
+        ? `Ano ${selectedYear}`
+        : selectedMonths.map(m => getMonthName(m, true)).join(', ') + ` / ${selectedYear}`;
+
+      // === ABA 1: RESUMO ===
+      const resumoData = [
+        ['RELATÓRIO DASHBOARD - SOLUÇÃO INDUSTRIAL'],
+        [`Período: ${periodoLabel}`],
+        [`Gerado em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`],
+        [],
+        ['INDICADOR', 'VALOR (R$)'],
+        ['Funcionários Ativos', stats.funcionarios],
+        ['Custo M.O.D', stats.custoMOD],
+        ['Custo M.O.I', stats.custoMOI],
+        ['Matéria Prima', stats.materiaPrima],
+        ['Consumo Água', stats.consumoAgua],
+        ['Manutenção', stats.manutencao],
+        ['Total Operação', stats.totalOperacao],
+        ['Total Geral', stats.totalGeral],
+      ];
+      const wsResumo = XLSX.utils.aoa_to_sheet(resumoData);
+      wsResumo['!cols'] = [{ wch: 25 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo');
+
+      // === ABA 2: GRÁFICO MENSAL ===
+      const graficoData = [
+        ['EVOLUÇÃO MENSAL - ' + selectedYear],
+        [],
+        ['Mês', 'M.O.D (R$)', 'M.O.I (R$)', 'Manutenção (R$)', 'Matéria Prima (R$)', 'Total (R$)'],
+        ...chartData.map(item => [
+          item.month,
+          item.MOD,
+          item.MOI,
+          item.Manutencao,
+          item.Materia,
+          item.MOD + item.MOI + item.Manutencao + item.Materia,
+        ]),
+        [],
+        [
+          'TOTAL',
+          chartData.reduce((s, i) => s + i.MOD, 0),
+          chartData.reduce((s, i) => s + i.MOI, 0),
+          chartData.reduce((s, i) => s + i.Manutencao, 0),
+          chartData.reduce((s, i) => s + i.Materia, 0),
+          chartData.reduce((s, i) => s + i.MOD + i.MOI + i.Manutencao + i.Materia, 0),
+        ],
+      ];
+      const wsGrafico = XLSX.utils.aoa_to_sheet(graficoData);
+      wsGrafico['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, wsGrafico, 'Evolução Mensal');
+
+      // === ABA 3: M.O.D DETALHADO ===
+      const { data: modData } = await supabase
+        .from('lancamento_mo')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('tipo', 'MOD')
+        .eq('ano', selectedYear)
+        .order('mes', { ascending: true })
+        .returns<LancamentoMO[]>();
+
+      if (modData && modData.length > 0) {
+        const modRows = modData.map(l => {
+          const emp = employees.find(e => e.id === l.employee_id);
+          const linha = linhas.find(li => li.id === l.production_line_id);
+          return [
+            emp?.nome || '-',
+            linha?.name || '-',
+            getMonthName(l.mes, true),
+            l.ano,
+            parseFloat(String(l.salario_base ?? 0)),
+            parseFloat(String(l.horas_trabalhadas ?? 0)),
+            parseFloat(String(l.custo_mensal ?? 0)),
+            l.observacao || '',
+          ];
+        });
+        const modSheet = [
+          ['M.O.D - MÃO DE OBRA DIRETA - ' + selectedYear],
+          [],
+          ['Funcionário', 'Linha', 'Mês', 'Ano', 'Salário Base (R$)', 'Horas', 'Custo Mensal (R$)', 'Observação'],
+          ...modRows,
+          [],
+          ['', '', '', '', '', 'TOTAL:', modData.reduce((s, l) => s + parseFloat(String(l.custo_mensal ?? 0)), 0), ''],
+        ];
+        const wsMod = XLSX.utils.aoa_to_sheet(modSheet);
+        wsMod['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 8 }, { wch: 16 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, wsMod, 'M.O.D');
+      }
+
+      // === ABA 4: M.O.I DETALHADO ===
+      const { data: moiData } = await supabase
+        .from('lancamento_mo')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('tipo', 'MOI')
+        .eq('ano', selectedYear)
+        .order('mes', { ascending: true })
+        .returns<LancamentoMO[]>();
+
+      if (moiData && moiData.length > 0) {
+        const moiRows = moiData.map(l => {
+          const emp = employees.find(e => e.id === l.employee_id);
+          const linha = linhas.find(li => li.id === l.production_line_id);
+          return [
+            emp?.nome || '-',
+            linha?.name || '-',
+            getMonthName(l.mes, true),
+            l.ano,
+            parseFloat(String(l.salario_base ?? 0)),
+            parseFloat(String(l.horas_trabalhadas ?? 0)),
+            parseFloat(String(l.custo_mensal ?? 0)),
+            l.observacao || '',
+          ];
+        });
+        const moiSheet = [
+          ['M.O.I - MÃO DE OBRA INDIRETA - ' + selectedYear],
+          [],
+          ['Funcionário', 'Linha', 'Mês', 'Ano', 'Salário Base (R$)', 'Horas', 'Custo Mensal (R$)', 'Observação'],
+          ...moiRows,
+          [],
+          ['', '', '', '', '', 'TOTAL:', moiData.reduce((s, l) => s + parseFloat(String(l.custo_mensal ?? 0)), 0), ''],
+        ];
+        const wsMoi = XLSX.utils.aoa_to_sheet(moiSheet);
+        wsMoi['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 8 }, { wch: 16 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, wsMoi, 'M.O.I');
+      }
+
+      // === ABA 5: MANUTENÇÃO ===
+      const { data: manutData } = await supabase
+        .from('manutencao')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .gte('data', `${selectedYear}-01-01`)
+        .lte('data', `${selectedYear}-12-31`)
+        .order('data', { ascending: true })
+        .returns<Manutencao[]>();
+
+      if (manutData && manutData.length > 0) {
+        const manutRows = manutData.map(m => [
+          new Date(m.data).toLocaleDateString('pt-BR'),
+          m.descricao || '-',
+          m.observacao || '-',
+          parseFloat(String(m.valor ?? 0)),
+        ]);
+        const manutSheet = [
+          ['MANUTENÇÃO - ' + selectedYear],
+          [],
+          ['Data', 'Descrição', 'Observação', 'Valor (R$)'],
+          ...manutRows,
+          [],
+          ['', '', 'TOTAL:', manutData.reduce((s, m) => s + parseFloat(String(m.valor ?? 0)), 0)],
+        ];
+        const wsManut = XLSX.utils.aoa_to_sheet(manutSheet);
+        wsManut['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 25 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(wb, wsManut, 'Manutenção');
+      }
+
+      // === ABA 6: CONSUMO ÁGUA ===
+      const { data: aguaData } = await supabase
+        .from('consumo_agua')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .gte('data', `${selectedYear}-01-01`)
+        .lte('data', `${selectedYear}-12-31`)
+        .order('data', { ascending: true })
+        .returns<ConsumoAgua[]>();
+
+      if (aguaData && aguaData.length > 0) {
+        const aguaRows = aguaData.map(a => [
+          new Date(a.data).toLocaleDateString('pt-BR'),
+          a.descricao || '-',
+          a.observacao || '-',
+          parseFloat(String(a.valor ?? 0)),
+        ]);
+        const aguaSheet = [
+          ['CONSUMO DE ÁGUA - ' + selectedYear],
+          [],
+          ['Data', 'Descrição', 'Observação', 'Valor (R$)'],
+          ...aguaRows,
+          [],
+          ['', '', 'TOTAL:', aguaData.reduce((s, a) => s + parseFloat(String(a.valor ?? 0)), 0)],
+        ];
+        const wsAgua = XLSX.utils.aoa_to_sheet(aguaSheet);
+        wsAgua['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 25 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(wb, wsAgua, 'Consumo Água');
+      }
+
+      // Gerar e baixar arquivo
+      const fileName = `Relatorio_Dashboard_${selectedYear}${showTotal ? '_Anual' : '_' + selectedMonths.map(m => getMonthName(m)).join('-')}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      alert('Erro ao gerar relatório');
+    }
   };
 
   const handleOpenLancamentos = async (tipo: 'MOD' | 'MOI' | 'Manutencao' | 'Agua') => {

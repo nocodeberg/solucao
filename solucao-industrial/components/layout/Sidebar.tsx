@@ -77,33 +77,20 @@ export default function Sidebar() {
 
         const data = (rows as { name: string; logo_url: string | null }[] | null)?.[0] ?? null;
 
-        console.log('📊 Sidebar - Dados da empresa:', data);
-        console.log('❌ Sidebar - Erro:', error);
-
         if (!error && data) {
           setCompanyName(data.name || 'Solução Industrial');
-          setCompanyLogo(data.logo_url);
-          console.log('✅ Sidebar - Logo definido:', data.logo_url);
-          
-          // FORÇAR VERIFICAÇÃO
-          if (data.logo_url) {
-            console.log('🖼️ Sidebar - Testando URL da imagem:', data.logo_url);
-            // Testar se a URL é válida
-            const img = document.createElement('img');
-            img.onload = () => console.log('✅ Sidebar - Imagem carregou com sucesso!');
-            img.onerror = () => {
-              console.error('❌ Sidebar - Erro ao carregar imagem, URL pode estar inválida');
-              setCompanyLogo(null);
-            };
-            img.src = data.logo_url;
+          // Só definir logo se URL existir e parecer válida
+          if (data.logo_url && (data.logo_url.startsWith('http') || data.logo_url.startsWith('/'))) {
+            setCompanyLogo(data.logo_url);
+          } else {
+            setCompanyLogo(null);
           }
         } else {
           setCompanyName('Solução Industrial');
           setCompanyLogo(null);
-          console.warn('⚠️ Sidebar - Usando dados padrão');
         }
       } catch (error) {
-        console.error('❌ Erro ao buscar info da empresa:', error);
+        console.error('Erro ao buscar info da empresa:', error);
         setCompanyName('Solução Industrial');
         setCompanyLogo(null);
       }
