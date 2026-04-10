@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +24,8 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      router.push('/dashboard');
+      const redirect = searchParams?.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.';
       setError(message);
@@ -197,5 +199,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Carregando...</p></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
 import DataTable, { Column } from '@/components/ui/DataTable';
 import { FormModal } from '@/components/ui/Modal';
-import Select, { SelectOption } from '@/components/ui/Select';
+import Select, { SelectOption, MultiSelect } from '@/components/ui/Select';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,7 +15,7 @@ import { formatCurrency, MONTHS } from '@/lib/utils';
 
 interface LancamentoFormData {
   employee_id: string;
-  production_line_id: string;
+  production_line_ids: string[];
   tipo: 'MOD' | 'MOI';
   mes: number;
   ano: number;
@@ -43,7 +43,7 @@ export default function LancamentoMOPage() {
 
   const [formData, setFormData] = useState<LancamentoFormData>({
     employee_id: '',
-    production_line_id: '',
+    production_line_ids: [],
     tipo: 'MOD',
     mes: currentMonth,
     ano: currentYear,
@@ -99,7 +99,7 @@ export default function LancamentoMOPage() {
   const handleCreate = () => {
     setFormData({
       employee_id: '',
-      production_line_id: '',
+      production_line_ids: [],
       tipo: 'MOD',
       mes: currentMonth,
       ano: currentYear,
@@ -194,17 +194,18 @@ export default function LancamentoMOPage() {
     });
   };
 
-  // Quando seleciona funcionário, preenche salario_base automaticamente
+  // Quando seleciona funcionário, preenche salario_base e tipo automaticamente
   const handleEmployeeChange = (employeeId: string) => {
     const employee = employees.find((e) => e.id === employeeId);
     const salario = employee ? parseFloat(String(employee.salario_base ?? 0)) : 0;
-    updateForm({ employee_id: employeeId, salario_base: salario });
+    const tipoMo = ((employee as unknown as Record<string, unknown>)?.tipo_mo as 'MOD' | 'MOI') || 'MOD';
+    updateForm({ employee_id: employeeId, salario_base: salario, tipo: tipoMo });
   };
 
   const validateForm = (): boolean => {
     const errors: Partial<Record<keyof LancamentoFormData, string>> = {};
     if (!formData.employee_id) errors.employee_id = 'Funcionário é obrigatório';
-    if (!formData.production_line_id) errors.production_line_id = 'Linha é obrigatória';
+    if (formData.production_line_ids.length === 0) errors.production_line_ids = 'Selecione pelo menos uma linha';
     if (formData.salario_base <= 0) errors.salario_base = 'Salário deve ser maior que zero';
     if (formData.custo_mensal <= 0) errors.custo_mensal = 'Custo mensal deve ser maior que zero';
     setFormErrors(errors);
@@ -219,6 +220,7 @@ export default function LancamentoMOPage() {
       const calc = calcularCustos(formData);
       const submitData = {
         ...formData,
+        production_line_ids: formData.production_line_ids,
         data_lancamento: `${formData.ano}-${String(formData.mes).padStart(2, '0')}-01`,
         valor_hora_extra: Math.round(calc.totalHoraExtra * 100) / 100,
         valor_insalubridade: Math.round(calc.valorInsalubridade * 100) / 100,
@@ -280,8 +282,32 @@ export default function LancamentoMOPage() {
       key: 'production_line_id',
       label: 'Linha',
       render: (reg) => {
-        const linha = linhas.find((l) => l.id === reg.production_line_id);
-        return linha?.name || '-';
+        const ids = (reg as unknown as Record<string, unknown>).production_line_ids as string[] | undefined;
+        const names: string[] = [];
+        if (ids && ids.length > 0) {
+          ids.forEach((id) => {
+            const nome = linhas.find((l) => l.id === id)?.name;
+            if (nome) names.push(nome);
+          });
+        } else if (reg.production_line_id) {
+          const nome = linhas.find((l) => l.id === reg.production_line_id)?.name;
+          if (nome) names.push(nome);
+        }
+        if (names.length === 0) return '-';
+        if (names.length === 1) return <span className="text-sm">{names[0]}</span>;
+        return (
+          <div className="relative group">
+            <span className="text-sm truncate max-w-[200px] inline-block align-middle">
+              {names[0]} <span className="text-xs text-primary-600 font-medium">+{names.length - 1}</span>
+            </span>
+            <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[220px]">
+              <p className="text-xs font-semibold text-gray-500 mb-1">Linhas ({names.length})</p>
+              {names.map((n, i) => (
+                <p key={i} className="text-sm text-gray-700 py-0.5">{n}</p>
+              ))}
+            </div>
+          </div>
+        );
       },
     },
     {
@@ -404,15 +430,15 @@ export default function LancamentoMOPage() {
               error={formErrors.employee_id}
               placeholder="Selecione o funcionário"
             />
-            <Select
+            <MultiSelect
               options={linhaOptions}
-              value={formData.production_line_id}
-              onChange={(value) => updateForm({ production_line_id: value })}
+              value={formData.production_line_ids}
+              onChange={(values) => updateForm({ production_line_ids: values })}
               label="Linha de Produção"
               required
               searchable
-              error={formErrors.production_line_id}
-              placeholder="Selecione a linha"
+              error={formErrors.production_line_ids}
+              placeholder="Selecione as linhas"
             />
           </div>
 
@@ -424,6 +450,7 @@ export default function LancamentoMOPage() {
               onChange={(value) => updateForm({ tipo: value as 'MOD' | 'MOI' })}
               label="Tipo"
               required
+              disabled={!!formData.employee_id}
             />
             <Select
               options={mesOptions}

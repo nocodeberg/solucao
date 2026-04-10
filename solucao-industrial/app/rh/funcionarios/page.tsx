@@ -26,6 +26,15 @@ interface EmployeeFormData {
   email: string;
   foto_url: File | string | null;
   active: boolean;
+  tipo_mo: 'MOD' | 'MOI';
+}
+
+function getLocalDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export default function FuncionariosPage() {
@@ -40,11 +49,12 @@ export default function FuncionariosPage() {
     cpf: '',
     cargo_id: '',
     salario_base: 0,
-    data_admissao: new Date().toISOString().split('T')[0],
+    data_admissao: getLocalDateString(),
     telefone: '',
     email: '',
     foto_url: null,
     active: true,
+    tipo_mo: 'MOD',
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof EmployeeFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -89,11 +99,12 @@ export default function FuncionariosPage() {
       cpf: '',
       cargo_id: '',
       salario_base: 0,
-      data_admissao: new Date().toISOString().split('T')[0],
+      data_admissao: getLocalDateString(),
       telefone: '',
       email: '',
       foto_url: null,
       active: true,
+      tipo_mo: 'MOD',
     });
     setFormErrors({});
     setIsModalOpen(true);
@@ -106,11 +117,12 @@ export default function FuncionariosPage() {
       cpf: employee.cpf || '',
       cargo_id: employee.cargo_id || '',
       salario_base: parseFloat(String(employee.salario_base ?? 0)),
-      data_admissao: employee.data_admissao || new Date().toISOString().split('T')[0],
+      data_admissao: employee.data_admissao || getLocalDateString(),
       telefone: employee.telefone || '',
       email: employee.email || '',
       foto_url: employee.foto_url || null,
       active: employee.active,
+      tipo_mo: ((employee as unknown as Record<string, unknown>).tipo_mo as 'MOD' | 'MOI') || 'MOD',
     });
     setFormErrors({});
     setIsModalOpen(true);
@@ -272,7 +284,7 @@ export default function FuncionariosPage() {
       label: 'Admissão',
       sortable: true,
       render: (employee) =>
-        employee.data_admissao ? new Date(employee.data_admissao).toLocaleDateString('pt-BR') : '-',
+        employee.data_admissao ? new Date(employee.data_admissao + 'T00:00:00').toLocaleDateString('pt-BR') : '-',
     },
     {
       key: 'active',
@@ -472,6 +484,37 @@ export default function FuncionariosPage() {
               {formErrors.email && (
                 <p className="mt-1 text-sm text-red-500">{formErrors.email}</p>
               )}
+            </div>
+
+            {/* Tipo de Mão de Obra */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipo de Mão de Obra <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipo_mo"
+                    value="MOD"
+                    checked={formData.tipo_mo === 'MOD'}
+                    onChange={() => setFormData({ ...formData, tipo_mo: 'MOD' })}
+                    className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-700">M.O.D (Mão de Obra Direta)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipo_mo"
+                    value="MOI"
+                    checked={formData.tipo_mo === 'MOI'}
+                    onChange={() => setFormData({ ...formData, tipo_mo: 'MOI' })}
+                    className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-700">M.O.I (Mão de Obra Indireta)</span>
+                </label>
+              </div>
             </div>
 
             {/* Status */}

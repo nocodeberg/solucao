@@ -146,7 +146,7 @@ export default function DashboardPage() {
       // Carregar dados de funcionários ativos
       const { count: funcionariosCount, data: employeesData } = await supabase
         .from('employees')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('company_id', profile.company_id)
         .eq('active', true);
 
@@ -277,16 +277,12 @@ export default function DashboardPage() {
 
   const toggleMonth = (month: number) => {
     setShowTotal(false);
-    setSelectedMonths((prev) =>
-      prev.includes(month)
-        ? prev.filter((m) => m !== month)
-        : [...prev, month].sort((a, b) => a - b)
-    );
+    setSelectedMonths([month]);
   };
 
   const handleTotalClick = () => {
     setShowTotal(true);
-    setSelectedMonths([]);
+    setSelectedMonths([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   };
 
   const getTotalForActiveTab = () => {
@@ -574,7 +570,7 @@ export default function DashboardPage() {
               key={month.value}
               onClick={() => toggleMonth(month.value)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedMonths.includes(month.value) && !showTotal
+                selectedMonths.includes(month.value)
                   ? 'bg-primary-600 text-white'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}

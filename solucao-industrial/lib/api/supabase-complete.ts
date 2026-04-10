@@ -482,7 +482,7 @@ export const products = {
 // API COMPLETA - EMPLOYEES
 // =====================================================
 // Mapeamento DB (inglês) → TypeScript (português) para employees
-const EMPLOYEE_SELECT = 'id, company_id, cargo_id, nome:full_name, cpf, email, telefone:phone, salario_base:salary, data_admissao:admission_date, foto_url:avatar_url, active, created_at, updated_at';
+const EMPLOYEE_SELECT = 'id, company_id, cargo_id, nome:full_name, cpf, email, telefone:phone, salario_base:salary, data_admissao:admission_date, foto_url:avatar_url, active, tipo_mo, created_at, updated_at';
 const mapEmployeeToDb = (data: any) => {
   const mapped: any = { ...data };
   if ('nome' in mapped) { mapped.full_name = mapped.nome; delete mapped.nome; }

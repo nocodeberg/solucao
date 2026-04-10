@@ -504,7 +504,7 @@ export default function LinhasPage() {
             return (
               <div key={linha.id} className="bg-white rounded-lg border border-gray-200 shadow-sm">
                 {/* Line Header */}
-                <div className="flex items-center justify-between px-6 py-4">
+                <div className="flex items-center justify-between px-6 py-4 cursor-pointer" onClick={() => toggleExpand(linha.id)}>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold text-gray-800">{linha.name}</span>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -516,7 +516,7 @@ export default function LinhasPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                     {canCreate && (
                       <button
                         onClick={() => handleOpenLancamentoModal(linha)}
