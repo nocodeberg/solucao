@@ -1576,6 +1576,33 @@ const pecasHora = {
 };
 
 // =====================================================
+// AUDIT LOGS
+// =====================================================
+const auditLogs = {
+  list: async (params?: { limit?: number; entity?: string; action?: string }) => {
+    try {
+      const profile = await getCurrentProfile();
+      let query = supabaseAdmin
+        .from('audit_logs')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .order('created_at', { ascending: false });
+
+      if (params?.entity) query = query.eq('entity', params.entity);
+      if (params?.action) query = query.eq('action', params.action);
+      query = query.limit(params?.limit || 200);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro em auditLogs.list:', error);
+      throw error;
+    }
+  },
+};
+
+// =====================================================
 // EXPORTAR API COMPLETA
 // =====================================================
 export const apiComplete = {
@@ -1596,6 +1623,7 @@ export const apiComplete = {
   transporte,
   investimentos,
   pecasHora,
+  auditLogs,
 };
 
 export default apiComplete;

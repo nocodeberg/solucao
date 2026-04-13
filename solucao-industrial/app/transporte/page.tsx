@@ -9,6 +9,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, Truck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Transporte } from '@/types/database.types';
 import { formatCurrency, MONTHS } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ interface FormData {
 
 export default function TransportePage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [registros, setRegistros] = useState<Transporte[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,7 +75,8 @@ export default function TransportePage() {
     if (!validateForm()) return;
     try {
       setSubmitLoading(true);
-      await apiComplete.transporte.create(formData);
+      const result = await apiComplete.transporte.create(formData);
+      await audit.log('CREATE', 'Transporte', `Criou registro de transporte "${formData.descricao}"`, result?.id);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {
@@ -88,6 +91,7 @@ export default function TransportePage() {
     if (!confirm('Deseja excluir este registro?')) return;
     try {
       await apiComplete.transporte.delete(id);
+      await audit.log('DELETE', 'Transporte', 'Excluiu registro de transporte', id);
       await loadData();
     } catch (error) {
       console.error('Erro ao excluir:', error);

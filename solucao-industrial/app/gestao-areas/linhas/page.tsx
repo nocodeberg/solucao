@@ -13,6 +13,7 @@ import { apiComplete } from '@/lib/api/supabase-complete';
 import { ProductionLine, Product, LineType, ProductLaunch } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 import { logger } from '@/lib/logger';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface LinhaFormData {
   name: string;
@@ -47,6 +48,7 @@ const currentMonth = new Date().getMonth() + 1;
 
 export default function LinhasPage() {
   const { canCreate, canEdit, canDelete, profile, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const supabase = useSupabase();
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -215,6 +217,7 @@ export default function LinhasPage() {
     if (!confirm(`Tem certeza que deseja excluir a linha "${linha.name}"?`)) return;
     try {
       await apiComplete.productionLines.delete(linha.id);
+      await audit.log('DELETE', 'Linha de Produção', `Excluiu linha "${linha.name}"`, linha.id);
       await loadData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao excluir linha';
@@ -235,8 +238,10 @@ export default function LinhasPage() {
       setLinhaSubmitLoading(true);
       if (editingLinha) {
         await apiComplete.productionLines.update(editingLinha.id, linhaForm);
+        await audit.log('UPDATE', 'Linha de Produção', `Editou linha "${linhaForm.name}"`, editingLinha.id);
       } else {
-        await apiComplete.productionLines.create(linhaForm);
+        const result = await apiComplete.productionLines.create(linhaForm);
+        await audit.log('CREATE', 'Linha de Produção', `Criou linha "${linhaForm.name}"`, result?.id);
       }
       setIsLinhaModalOpen(false);
       await loadData();
@@ -251,6 +256,7 @@ export default function LinhasPage() {
   const handleToggleActive = async (linha: ProductionLine) => {
     try {
       await apiComplete.productionLines.update(linha.id, { active: !linha.active });
+      await audit.log('UPDATE', 'Linha de Produção', `${linha.active ? 'Desativou' : 'Ativou'} linha "${linha.name}"`, linha.id);
       await loadData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao atualizar linha';
@@ -279,6 +285,7 @@ export default function LinhasPage() {
     if (!confirm(`Tem certeza que deseja excluir o produto "${product.name}"?`)) return;
     try {
       await apiComplete.products.delete(product.id);
+      await audit.log('DELETE', 'Produto', `Excluiu produto "${product.name}"`, product.id);
       await loadData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao excluir produto';
@@ -300,8 +307,10 @@ export default function LinhasPage() {
       setProdutoSubmitLoading(true);
       if (editingProduct) {
         await apiComplete.products.update(editingProduct.id, produtoForm);
+        await audit.log('UPDATE', 'Produto', `Editou produto "${produtoForm.name}"`, editingProduct.id);
       } else {
-        await apiComplete.products.create({ ...produtoForm, production_line_id: selectedLineId });
+        const result = await apiComplete.products.create({ ...produtoForm, production_line_id: selectedLineId });
+        await audit.log('CREATE', 'Produto', `Criou produto "${produtoForm.name}"`, result?.id);
       }
       setIsProdutoModalOpen(false);
       await loadData();

@@ -9,6 +9,7 @@ import Select, { SelectOption } from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import FileUpload from '@/components/ui/FileUpload';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Plus, Pencil, Trash2, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
@@ -39,6 +40,7 @@ function getLocalDateString(): string {
 
 export default function FuncionariosPage() {
   const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +137,7 @@ export default function FuncionariosPage() {
 
     try {
       await apiComplete.employees.delete(employee.id);
+      await audit.log('DELETE', 'Funcionário', `Excluiu funcionário "${employee.nome}"`, employee.id);
       await loadData();
     } catch (error: unknown) {
       console.error('Erro ao excluir funcionário:', error);
@@ -194,8 +197,10 @@ export default function FuncionariosPage() {
 
       if (editingEmployee) {
         await apiComplete.employees.update(editingEmployee.id, dataToSubmit);
+        await audit.log('UPDATE', 'Funcionário', `Editou funcionário "${formData.nome}"`, editingEmployee.id);
       } else {
-        await apiComplete.employees.create(dataToSubmit);
+        const result = await apiComplete.employees.create(dataToSubmit);
+        await audit.log('CREATE', 'Funcionário', `Criou funcionário "${formData.nome}"`, result?.id);
       }
 
       setIsModalOpen(false);

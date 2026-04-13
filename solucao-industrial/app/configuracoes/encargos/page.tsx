@@ -9,6 +9,7 @@ import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
 import { Encargo } from '@/types/database.types';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface EncargoFormData {
   nome: string;
@@ -18,6 +19,7 @@ interface EncargoFormData {
 
 export default function EncargosPage() {
   const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [encargos, setEncargos] = useState<Encargo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,6 +86,7 @@ export default function EncargosPage() {
 
     try {
       await apiComplete.encargos.delete(encargo.id);
+      await audit.log('DELETE', 'Encargo', `Excluiu encargo "${encargo.nome}"`, encargo.id);
       await loadEncargos();
     } catch (error: unknown) {
       console.error('Erro ao excluir encargo:', error);
@@ -115,8 +118,10 @@ export default function EncargosPage() {
 
       if (editingEncargo) {
         await apiComplete.encargos.update(editingEncargo.id, formData);
+        await audit.log('UPDATE', 'Encargo', `Editou encargo "${formData.nome}"`, editingEncargo.id);
       } else {
-        await apiComplete.encargos.create(formData);
+        const result = await apiComplete.encargos.create(formData);
+        await audit.log('CREATE', 'Encargo', `Criou encargo "${formData.nome}"`, result?.id);
       }
 
       setIsModalOpen(false);

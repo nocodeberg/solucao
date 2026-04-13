@@ -8,6 +8,7 @@ import { FormModal } from '@/components/ui/Modal';
 import Select, { SelectOption, MultiSelect } from '@/components/ui/Select';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, FileText } from 'lucide-react';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
 import { LancamentoMO, Employee, ProductionLine, Encargo } from '@/types/database.types';
@@ -31,6 +32,7 @@ interface LancamentoFormData {
 
 export default function LancamentoMOPage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [lancamentos, setLancamentos] = useState<LancamentoMO[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
@@ -227,7 +229,9 @@ export default function LancamentoMOPage() {
         total_encargos: Math.round(calc.totalEncargosEmpresa * 100) / 100,
         custo_mensal: Math.round(calc.custoTotal * 100) / 100,
       };
-      await apiComplete.lancamentoMO.create(submitData);
+      const result = await apiComplete.lancamentoMO.create(submitData);
+      const empName = employees.find(e => e.id === formData.employee_id)?.nome || '';
+      await audit.log('CREATE', 'Lançamento M.O.', `Criou lançamento M.O. para "${empName}" - ${MONTHS.find(m => m.value === formData.mes)?.fullLabel}/${formData.ano}`, result?.id);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {

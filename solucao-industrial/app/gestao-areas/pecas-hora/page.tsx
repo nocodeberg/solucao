@@ -8,6 +8,7 @@ import { FormModal } from '@/components/ui/Modal';
 import { Plus, Clock, Calculator } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { PecaHora, ProductionLine } from '@/types/database.types';
 
 interface FormData {
@@ -57,6 +58,7 @@ function calcularResultados(d: FormData) {
 
 export default function PecasHoraPage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [registros, setRegistros] = useState<PecaHora[]>([]);
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,8 +136,12 @@ export default function PecasHoraPage() {
       setSubmitLoading(true);
       if (editingId) {
         await apiComplete.pecasHora.update(editingId, formData);
+        const linhaName = linhas.find(l => l.id === formData.production_line_id)?.name || '';
+        await audit.log('UPDATE', 'Peças/Hora', `Editou cálculo peças/hora - ${linhaName}`, editingId);
       } else {
-        await apiComplete.pecasHora.create(formData);
+        const result = await apiComplete.pecasHora.create(formData);
+        const linhaName = linhas.find(l => l.id === formData.production_line_id)?.name || '';
+        await audit.log('CREATE', 'Peças/Hora', `Criou cálculo peças/hora - ${linhaName}`, result?.id);
       }
       setIsModalOpen(false);
       await loadData();
@@ -151,6 +157,7 @@ export default function PecasHoraPage() {
     if (!confirm('Deseja excluir este cálculo?')) return;
     try {
       await apiComplete.pecasHora.delete(id);
+      await audit.log('DELETE', 'Peças/Hora', 'Excluiu cálculo peças/hora', id);
       await loadData();
     } catch (error) {
       console.error('Erro ao excluir:', error);

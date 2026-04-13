@@ -6,6 +6,7 @@ import { FormModal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
 import { Profile, UserRole } from '@/types/database.types';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { UserCircle, Mail, Shield, Pencil, Trash2, Key, Plus } from 'lucide-react';
 import Toggle from '@/components/ui/Toggle';
 
@@ -52,6 +53,7 @@ interface ResetPasswordFormData {
 
 export default function UsuariosPage() {
   const { profile, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -155,6 +157,7 @@ export default function UsuariosPage() {
 
     try {
       await apiComplete.users.delete(user.id);
+      await audit.log('DELETE', 'Usuário', `Excluiu usuário "${user.full_name}"`, user.id);
       await loadUsers();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao excluir usuário';
@@ -196,8 +199,10 @@ export default function UsuariosPage() {
           role: userForm.role,
           active: userForm.active,
         });
+        await audit.log('UPDATE', 'Usuário', `Editou usuário "${userForm.full_name}"`, editingUser.id);
       } else {
-        await apiComplete.users.create(userForm);
+        const result = await apiComplete.users.create(userForm);
+        await audit.log('CREATE', 'Usuário', `Criou usuário "${userForm.full_name}"`, result?.id);
       }
       handleCloseUserModal();
       await loadUsers();
@@ -217,6 +222,7 @@ export default function UsuariosPage() {
 
     try {
       await apiComplete.users.update(user.id, { active: !user.active });
+      await audit.log('UPDATE', 'Usuário', `${user.active ? 'Desativou' : 'Ativou'} usuário "${user.full_name}"`, user.id);
       await loadUsers();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao atualizar usuário';

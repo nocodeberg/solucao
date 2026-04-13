@@ -11,6 +11,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, Wrench } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Manutencao, ProductionLine } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ interface ManutencaoFormData {
 
 export default function ManutencaoPage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [registros, setRegistros] = useState<Manutencao[]>([]);
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,8 @@ export default function ManutencaoPage() {
 
     try {
       setSubmitLoading(true);
-      await apiComplete.manutencao.create(formData);
+      const result = await apiComplete.manutencao.create(formData);
+      await audit.log('CREATE', 'Manutenção', `Criou manutenção "${formData.descricao}"`, result?.id);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {

@@ -11,6 +11,7 @@ import DatePicker from '@/components/ui/DatePicker';
 import { Plus, TrendingDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Investimento, ProductionLine } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -26,6 +27,7 @@ interface FormData {
 
 export default function InvestimentosPage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [registros, setRegistros] = useState<Investimento[]>([]);
   const [linhas, setLinhas] = useState<ProductionLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,8 @@ export default function InvestimentosPage() {
       setSubmitLoading(true);
       const payload: any = { ...formData };
       if (!payload.production_line_id) delete payload.production_line_id;
-      await apiComplete.investimentos.create(payload);
+      const result = await apiComplete.investimentos.create(payload);
+      await audit.log('CREATE', 'Investimento', `Criou investimento "${formData.descricao}"`, result?.id);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {
@@ -103,6 +106,7 @@ export default function InvestimentosPage() {
     if (!confirm('Deseja excluir este investimento?')) return;
     try {
       await apiComplete.investimentos.delete(id);
+      await audit.log('DELETE', 'Investimento', 'Excluiu investimento', id);
       await loadData();
     } catch (error) {
       console.error('Erro ao excluir:', error);

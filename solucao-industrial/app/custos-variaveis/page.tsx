@@ -10,6 +10,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, Zap, Phone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { CustoVariavel } from '@/types/database.types';
 import { formatCurrency, MONTHS } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ interface FormData {
 
 export default function CustosVariaveisPage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [registros, setRegistros] = useState<CustoVariavel[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,7 +86,8 @@ export default function CustosVariaveisPage() {
     if (!validateForm()) return;
     try {
       setSubmitLoading(true);
-      await apiComplete.custosVariaveis.create(formData);
+      const result = await apiComplete.custosVariaveis.create(formData);
+      await audit.log('CREATE', 'Custos Variáveis', `Criou custo variável "${formData.descricao}"`, result?.id);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {
@@ -99,6 +102,7 @@ export default function CustosVariaveisPage() {
     if (!confirm('Deseja excluir este registro?')) return;
     try {
       await apiComplete.custosVariaveis.delete(id);
+      await audit.log('DELETE', 'Custos Variáveis', 'Excluiu custo variável', id);
       await loadData();
     } catch (error) {
       console.error('Erro ao excluir:', error);

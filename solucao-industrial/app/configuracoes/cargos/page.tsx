@@ -9,6 +9,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
 import { Cargo } from '@/types/database.types';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface CargoFormData {
   nome: string;
@@ -17,6 +18,7 @@ interface CargoFormData {
 
 export default function CargosPage() {
   const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,6 +83,7 @@ export default function CargosPage() {
 
     try {
       await apiComplete.cargos.delete(cargo.id);
+      await audit.log('DELETE', 'Cargo', `Excluiu cargo "${cargo.nome}"`, cargo.id);
       await loadCargos();
     } catch (error: unknown) {
       console.error('Erro ao excluir cargo:', error);
@@ -108,8 +111,10 @@ export default function CargosPage() {
 
       if (editingCargo) {
         await apiComplete.cargos.update(editingCargo.id, formData);
+        await audit.log('UPDATE', 'Cargo', `Editou cargo "${formData.nome}"`, editingCargo.id);
       } else {
-        await apiComplete.cargos.create(formData);
+        const result = await apiComplete.cargos.create(formData);
+        await audit.log('CREATE', 'Cargo', `Criou cargo "${formData.nome}"`, result?.id);
       }
 
       setIsModalOpen(false);

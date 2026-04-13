@@ -10,6 +10,7 @@ import { MultiSelect } from '@/components/ui/Select';
 import { Plus, Eye, FileText, Check, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Piece, Group } from '@/types/database.types';
 
 interface PecaFormData {
@@ -23,6 +24,7 @@ interface PecaFormData {
 
 export default function PecasPage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [pecas, setPecas] = useState<Piece[]>([]);
   const [grupos, setGrupos] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,6 +167,7 @@ export default function PecasPage() {
     if (!confirm(`Deseja excluir a peça "${peca.name}"?`)) return;
     try {
       await apiComplete.pieces.delete(peca.id);
+      await audit.log('DELETE', 'Peça', `Excluiu peça "${peca.name}"`, String(peca.id));
       await loadData();
     } catch (error) {
       console.error('Erro ao excluir peça:', error);
@@ -189,8 +192,10 @@ export default function PecasPage() {
       setSubmitLoading(true);
       if (editingPeca) {
         await apiComplete.pieces.update(editingPeca.id, formData);
+        await audit.log('UPDATE', 'Peça', `Editou peça "${formData.name}"`, String(editingPeca.id));
       } else {
-        await apiComplete.pieces.create(formData);
+        const result = await apiComplete.pieces.create(formData);
+        await audit.log('CREATE', 'Peça', `Criou peça "${formData.name}"`, String(result?.id));
       }
       setIsModalOpen(false);
       await loadData();

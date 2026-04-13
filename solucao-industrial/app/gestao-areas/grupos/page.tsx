@@ -9,6 +9,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
 import { Group } from '@/types/database.types';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface GrupoFormData {
   name: string;
@@ -17,6 +18,7 @@ interface GrupoFormData {
 
 export default function GruposPage() {
   const { canCreate, canEdit, canDelete, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [grupos, setGrupos] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -79,6 +81,7 @@ export default function GruposPage() {
 
     try {
       await apiComplete.groups.delete(grupo.id);
+      await audit.log('DELETE', 'Grupo', `Excluiu grupo "${grupo.name}"`, grupo.id);
       await loadGrupos();
     } catch (error: unknown) {
       console.error('Erro ao excluir grupo:', error);
@@ -101,8 +104,10 @@ export default function GruposPage() {
       setSubmitLoading(true);
       if (editingGrupo) {
         await apiComplete.groups.update(editingGrupo.id, formData);
+        await audit.log('UPDATE', 'Grupo', `Editou grupo "${formData.name}"`, editingGrupo.id);
       } else {
-        await apiComplete.groups.create(formData);
+        const result = await apiComplete.groups.create(formData);
+        await audit.log('CREATE', 'Grupo', `Criou grupo "${formData.name}"`, result?.id);
       }
       setIsModalOpen(false);
       await loadGrupos();

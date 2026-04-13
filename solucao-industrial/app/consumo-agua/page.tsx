@@ -10,6 +10,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { Plus, Droplets } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { ConsumoAgua } from '@/types/database.types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ interface ConsumoAguaFormData {
 
 export default function ConsumoAguaPage() {
   const { canCreate, user, loading: authLoading } = useAuth();
+  const audit = useAuditLog();
   const [registros, setRegistros] = useState<ConsumoAgua[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,7 +90,8 @@ export default function ConsumoAguaPage() {
 
     try {
       setSubmitLoading(true);
-      await apiComplete.consumoAgua.create(formData);
+      const result = await apiComplete.consumoAgua.create(formData);
+      await audit.log('CREATE', 'Consumo Água', `Criou consumo água "${formData.descricao}"`, result?.id);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {

@@ -23,6 +23,7 @@ import {
   TrendingDown,
   Ruler,
   Calculator,
+  History,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -256,6 +257,12 @@ export default function Sidebar() {
       icon: <Settings className="w-5 h-5" />,
       href: '/configuracoes',
       roles: ['ADMIN'],
+    },
+    {
+      id: 'historico',
+      label: 'Histórico',
+      icon: <History className="w-5 h-5" />,
+      href: '/historico',
     },
     {
       id: 'resumo',
