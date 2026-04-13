@@ -18,4 +18,4 @@ SET
     "state": "SP"
   }'::jsonb,
   updated_at = NOW()
-WHERE id = (SELECT company_id FROM profiles WHERE email = 'admin@teste.com' LIMIT 1);
+WHERE id = (SELECT company_id FROM profiles LIMIT 1);

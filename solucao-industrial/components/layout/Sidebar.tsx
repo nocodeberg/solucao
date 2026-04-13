@@ -40,7 +40,7 @@ interface MenuItem {
 export default function Sidebar() {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['gestao-areas', 'rh']);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('Solução Industrial');
   const [isClient, setIsClient] = useState(false);
@@ -265,6 +265,21 @@ export default function Sidebar() {
     },
   ];
 
+  // Expandir automaticamente apenas o grupo que contém a rota ativa
+  React.useEffect(() => {
+    const activeParentIds: string[] = [];
+    menuItems.forEach((item) => {
+      if (item.children) {
+        const hasActiveChild = item.children.some((child) => child.href && pathname?.startsWith(child.href));
+        if (hasActiveChild) activeParentIds.push(item.id);
+      }
+    });
+    if (activeParentIds.length > 0) {
+      setExpandedItems(activeParentIds);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) =>
       prev.includes(itemId)
@@ -296,9 +311,9 @@ export default function Sidebar() {
               level === 0 ? 'text-gray-300 hover:bg-dark-800' : 'text-gray-400 hover:bg-dark-800 ml-4'
             )}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               {item.icon}
-              <span>{item.label}</span>
+              <span className="whitespace-nowrap">{item.label}</span>
             </div>
             {isExpanded ? (
               <ChevronDown className="w-4 h-4" />
@@ -328,7 +343,7 @@ export default function Sidebar() {
         )}
       >
         {item.icon}
-        <span>{item.label}</span>
+        <span className="whitespace-nowrap">{item.label}</span>
       </Link>
     );
   };

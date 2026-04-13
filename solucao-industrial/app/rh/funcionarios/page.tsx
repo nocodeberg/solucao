@@ -150,9 +150,7 @@ export default function FuncionariosPage() {
       errors.nome = 'Nome é obrigatório';
     }
 
-    if (!formData.cpf.trim()) {
-      errors.cpf = 'CPF é obrigatório';
-    } else if (!validateCPF(formData.cpf)) {
+    if (formData.cpf.trim() && !validateCPF(formData.cpf)) {
       errors.cpf = 'CPF inválido';
     }
 
@@ -398,7 +396,7 @@ export default function FuncionariosPage() {
             {/* CPF */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                CPF <span className="text-red-500">*</span>
+                CPF
               </label>
               <input
                 type="text"
