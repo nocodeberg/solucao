@@ -14,7 +14,6 @@ import {
   Factory,
   Wrench,
   Droplets,
-  Clock,
   FileText,
   Briefcase,
   Zap,
@@ -24,6 +23,7 @@ import {
   Ruler,
   Calculator,
   History,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,16 @@ export default function Sidebar() {
   const { profile, signOut } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [, setCompanyLogo] = useState<string | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
+  const [masterChecked, setMasterChecked] = useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/admin/check')
+      .then(r => r.json())
+      .then(d => setIsMaster(!!d.isMaster))
+      .catch(() => {})
+      .finally(() => setMasterChecked(true));
+  }, []);
   const [companyName, setCompanyName] = useState('Solução Industrial');
   const [isClient, setIsClient] = useState(false);
 
@@ -128,12 +138,6 @@ export default function Sidebar() {
           href: '/gestao-areas/linhas',
         },
         {
-          id: 'cadastro-grupos',
-          label: 'Cadastro Grupos',
-          icon: <FileText className="w-4 h-4" />,
-          href: '/gestao-areas/grupos',
-        },
-        {
           id: 'manutencao',
           label: 'Manutenção',
           icon: <Wrench className="w-4 h-4" />,
@@ -141,19 +145,13 @@ export default function Sidebar() {
         },
         {
           id: 'consumo-agua',
-          label: 'Consumo água',
+          label: 'Custo Variável',
           icon: <Droplets className="w-4 h-4" />,
           href: '/consumo-agua',
         },
         {
-          id: 'peca-por-hora',
-          label: 'Peça por hora',
-          icon: <Clock className="w-4 h-4" />,
-          href: '/gestao-areas/pecas',
-        },
-        {
           id: 'pecas-hora-calc',
-          label: 'Peças/Hora Galvano',
+          label: 'Peças por Hora',
           icon: <Calculator className="w-4 h-4" />,
           href: '/gestao-areas/pecas-hora',
         },
@@ -270,7 +268,19 @@ export default function Sidebar() {
       icon: <FileText className="w-5 h-5" />,
       href: '/resumo',
     },
+    ...(isMaster ? [{
+      id: 'admin',
+      label: 'Admin Master',
+      icon: <Shield className="w-5 h-5" />,
+      href: '/admin',
+    }] : []),
   ];
+
+  // Se for master sem company_id, mostrar apenas itens relevantes na ordem desejada
+  const masterOnlyIds = ['admin', 'historico', 'configuracoes'];
+  const visibleMenuItems = isMaster && !profile?.company_id
+    ? masterOnlyIds.map(id => menuItems.find(item => item.id === id)).filter(Boolean) as MenuItem[]
+    : menuItems;
 
   // Expandir automaticamente apenas o grupo que contém a rota ativa
   React.useEffect(() => {
@@ -377,7 +387,11 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {menuItems.map((item) => renderMenuItem(item))}
+        {masterChecked ? visibleMenuItems.map((item) => renderMenuItem(item)) : (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+          </div>
+        )}
       </nav>
 
       {/* User Profile */}

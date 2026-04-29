@@ -1,0 +1,46 @@
+Tópico 01 - Passado
+- O ano, vir a partir das datas lançadas, não ter opção de seleção de anos futuros.
+
+Tópico 02
+- Area da peça, melhorar
+- Manutenção e água não está mostrando no Dashboard
+- O gráfico não está respondendo com a seleção do mês
+
+
+
+
+Tópico 03
+
+Retirar o Dash da parte superior:
+
+
+Tópico 04
+Água – retear pelo número de linhas criadas - Se tem 7 linhas, dividir por 7
+
+
+
+Tópico 05
+Manutenção – criar uma opção “Caixa de seleção” com a seguinte opção – “Todas as linhas”
+
+
+
+
+Tópico 06
+No lançamento de mão de obra, tem que ter uma opção de excluir
+
+
+
+
+
+
+
+
+Tópico 07
+No lançamento de M.O
+Tem que realizar a divisão pelas linhas lançadas: 
+
+Tópico 08
+Resumo  CUSTO POR PEÇA:
+
+Qual mês: - Colocar a opção de filtro dos meses – O Resumo não informa o mês
+

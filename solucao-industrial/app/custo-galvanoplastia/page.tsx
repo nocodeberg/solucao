@@ -73,7 +73,7 @@ export default function CustoGalvanoplastiaPage() {
         .gte('data', `${mesStr}-01`)
         .lte('data', `${mesStr}-31`) as { data: any[] | null };
 
-      // Consumo água do mês
+      // Custo variável do mês
       const { data: aguaData } = await supabase.from('consumo_agua').select('*')
         .eq('company_id', companyId)
         .gte('data', `${mesStr}-01`)
@@ -208,7 +208,7 @@ export default function CustoGalvanoplastiaPage() {
     loadData();
   }, [authLoading, user, loadData]);
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i);
   const fmt = (v: number) => formatCurrency(v);
   const fmt4 = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 

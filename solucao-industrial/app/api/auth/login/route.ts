@@ -71,6 +71,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verificar se a empresa está ativa (exceto master admins)
+    const MASTER_EMAILS = (process.env.MASTER_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    const isMaster = MASTER_EMAILS.includes((email || '').toLowerCase());
+
+    if (!isMaster && profile.company_id) {
+      const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('active')
+        .eq('id', profile.company_id)
+        .single();
+
+      if (company && !company.active) {
+        // Fazer signOut para limpar a sessão criada
+        await supabaseAuth.auth.signOut();
+        return NextResponse.json(
+          { error: 'COMPANY_INACTIVE' },
+          { status: 403 }
+        );
+      }
+    }
+
     return NextResponse.json({
       user: authData.user,
       session: authData.session,

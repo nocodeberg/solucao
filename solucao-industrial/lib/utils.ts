@@ -202,7 +202,7 @@ export function getMonthName(month: number, full: boolean = false): string {
 export function getYearsList(startYear?: number, endYear?: number): number[] {
   const currentYear = new Date().getFullYear();
   const start = startYear || currentYear - 5;
-  const end = endYear || currentYear + 2;
+  const end = endYear || currentYear;
 
   const years: number[] = [];
   for (let year = start; year <= end; year++) {

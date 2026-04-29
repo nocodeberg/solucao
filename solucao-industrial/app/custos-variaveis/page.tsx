@@ -159,7 +159,7 @@ export default function CustosVariaveisPage() {
     },
   ];
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i);
 
   return (
     <MainLayout title="Custos Variáveis">

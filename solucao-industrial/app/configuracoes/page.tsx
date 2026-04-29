@@ -13,7 +13,7 @@ type Tab = 'empresa' | 'pessoais' | 'seguranca';
 export default function ConfiguracoesPage() {
   const { user, profile } = useAuth();
   const supabase = createSupabaseClient();
-  const [activeTab, setActiveTab] = useState<Tab>('empresa');
+  const [activeTab, setActiveTab] = useState<Tab>(profile?.company_id ? 'empresa' : 'pessoais');
 
   // Dados da Empresa
   const [company, setCompany] = useState<Company | null>(null);
@@ -219,7 +219,7 @@ export default function ConfiguracoesPage() {
   const address = company?.address as Record<string, string> | undefined;
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'empresa', label: 'Dados da Empresa' },
+    ...(profile?.company_id ? [{ key: 'empresa' as Tab, label: 'Dados da Empresa' }] : []),
     { key: 'pessoais', label: 'Dados Pessoais' },
     { key: 'seguranca', label: 'Segurança' },
   ];
@@ -442,6 +442,7 @@ export default function ConfiguracoesPage() {
                   onChange={(e) => setEmailForm((prev) => ({ ...prev, novo_email: e.target.value }))}
                   className={inputEditable}
                   placeholder="Digite seu email"
+                  autoComplete="new-email"
                 />
               </div>
               <div>
@@ -453,6 +454,7 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => setEmailForm((prev) => ({ ...prev, senha_atual: e.target.value }))}
                     className={inputEditable + ' pr-10'}
                     placeholder="******"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -493,6 +495,7 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => setSenhaForm((prev) => ({ ...prev, senha_atual: e.target.value }))}
                     className={inputEditable + ' pr-10'}
                     placeholder="******"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -512,6 +515,7 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => setSenhaForm((prev) => ({ ...prev, nova_senha: e.target.value }))}
                     className={inputEditable + ' pr-10'}
                     placeholder="******"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -531,6 +535,7 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => setSenhaForm((prev) => ({ ...prev, confirmar_senha: e.target.value }))}
                     className={inputEditable + ' pr-10'}
                     placeholder="******"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"

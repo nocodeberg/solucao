@@ -784,6 +784,35 @@ export const manutencao = {
       throw error;
     }
   },
+
+  update: async (id: string, data: any) => {
+    try {
+      const { data: result, error } = await supabaseAdmin
+        .from('manutencao')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em manutencao.update:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const { error } = await supabaseAdmin
+        .from('manutencao')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em manutencao.delete:', error);
+      throw error;
+    }
+  },
 };
 
 // =====================================================
@@ -823,6 +852,35 @@ export const consumoAgua = {
       throw error;
     }
   },
+
+  update: async (id: string, data: any) => {
+    try {
+      const { data: result, error } = await supabaseAdmin
+        .from('consumo_agua')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em consumoAgua.update:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const { error } = await supabaseAdmin
+        .from('consumo_agua')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em consumoAgua.delete:', error);
+      throw error;
+    }
+  },
 };
 
 // =====================================================
@@ -859,6 +917,41 @@ export const lancamentoMO = {
       return result;
     } catch (error) {
       console.error('Erro em lancamentoMO.create:', error);
+      throw error;
+    }
+  },
+
+  update: async (id: string, data: any) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { data: result, error } = await supabaseAdmin
+        .from('lancamento_mo')
+        .update(data)
+        .eq('id', id)
+        .eq('company_id', profile.company_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Erro em lancamentoMO.update:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const profile = await getCurrentProfile();
+      const { error } = await supabaseAdmin
+        .from('lancamento_mo')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro em lancamentoMO.delete:', error);
       throw error;
     }
   },

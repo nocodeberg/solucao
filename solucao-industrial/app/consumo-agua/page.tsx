@@ -7,7 +7,7 @@ import DataTable, { Column } from '@/components/ui/DataTable';
 import { FormModal } from '@/components/ui/Modal';
 import DatePicker from '@/components/ui/DatePicker';
 import CurrencyInput from '@/components/ui/CurrencyInput';
-import { Plus, Droplets } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -35,6 +35,7 @@ export default function ConsumoAguaPage() {
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof ConsumoAguaFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (authLoading || !user) {
@@ -66,6 +67,7 @@ export default function ConsumoAguaPage() {
   }, [authLoading, user, loadData]);
 
   const handleCreate = () => {
+    setEditingId(null);
     setFormData({
       descricao: '',
       valor: 0,
@@ -74,6 +76,30 @@ export default function ConsumoAguaPage() {
     });
     setFormErrors({});
     setIsModalOpen(true);
+  };
+
+  const handleEdit = (reg: ConsumoAgua) => {
+    setEditingId(reg.id);
+    setFormData({
+      descricao: reg.descricao || '',
+      valor: parseFloat(String(reg.valor ?? 0)),
+      data: reg.data || new Date().toISOString().split('T')[0],
+      observacao: reg.observacao || '',
+    });
+    setFormErrors({});
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (reg: ConsumoAgua) => {
+    if (!confirm(`Tem certeza que deseja excluir "${reg.descricao}"?`)) return;
+    try {
+      await apiComplete.consumoAgua.delete(reg.id);
+      await audit.log('DELETE', 'Custo Variável', `Excluiu custo variável "${reg.descricao}"`, reg.id);
+      await loadData();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao excluir';
+      alert(message);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -90,24 +116,24 @@ export default function ConsumoAguaPage() {
 
     try {
       setSubmitLoading(true);
-      const result = await apiComplete.consumoAgua.create(formData);
-      await audit.log('CREATE', 'Consumo Água', `Criou consumo água "${formData.descricao}"`, result?.id);
+      if (editingId) {
+        await apiComplete.consumoAgua.update(editingId, formData);
+        await audit.log('UPDATE', 'Custo Variável', `Editou custo variável "${formData.descricao}"`, editingId);
+      } else {
+        const result = await apiComplete.consumoAgua.create(formData);
+        await audit.log('CREATE', 'Custo Variável', `Criou custo variável "${formData.descricao}"`, result?.id);
+      }
+      setEditingId(null);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {
-      console.error('Erro ao salvar consumo de água:', error);
-      const message = error instanceof Error ? error.message : 'Erro ao salvar consumo';
+      console.error('Erro ao salvar custo variável:', error);
+      const message = error instanceof Error ? error.message : 'Erro ao salvar custo variável';
       alert(message);
     } finally {
       setSubmitLoading(false);
     }
   };
-
-  // Total de custos
-  const totalConsumo = registros.reduce(
-    (sum, reg) => sum + parseFloat(String(reg.valor ?? 0)),
-    0
-  );
 
   const columns: Column<ConsumoAgua>[] = [
     {
@@ -131,10 +157,10 @@ export default function ConsumoAguaPage() {
   ];
 
   return (
-    <MainLayout title="Consumo de Água">
+    <MainLayout title="Custo Variável">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-gray-600">Registre e acompanhe os custos de consumo de água</p>
+          <p className="text-gray-600">Registre e acompanhe os custos variáveis</p>
           {canCreate && (
             <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={handleCreate}>
               Novo Registro
@@ -142,16 +168,6 @@ export default function ConsumoAguaPage() {
           )}
         </div>
 
-        {/* Card de Total */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
-            <Droplets className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Total Consumo de Água</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalConsumo)}</p>
-          </div>
-        </div>
       </div>
 
       {loading ? (
@@ -162,7 +178,17 @@ export default function ConsumoAguaPage() {
           columns={columns}
           keyExtractor={(reg) => reg.id}
           searchKeys={['descricao', 'observacao']}
-          emptyMessage="Nenhum registro de consumo de água"
+          emptyMessage="Nenhum registro de custo variável"
+          actions={(reg) => (
+            <div className="flex items-center justify-end gap-1">
+              <button onClick={() => handleEdit(reg)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button onClick={() => handleDelete(reg)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         />
       )}
 
@@ -170,8 +196,8 @@ export default function ConsumoAguaPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
-        title="Novo Registro de Consumo"
-        submitText="Criar"
+        title={editingId ? 'Editar Custo Variável' : 'Novo Custo Variável'}
+        submitText={editingId ? 'Salvar' : 'Criar'}
         isLoading={submitLoading}
       >
         <div className="space-y-4">

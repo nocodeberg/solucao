@@ -51,7 +51,7 @@ export default function FuncionariosPage() {
     cpf: '',
     cargo_id: '',
     salario_base: 0,
-    data_admissao: getLocalDateString(),
+    data_admissao: '',
     telefone: '',
     email: '',
     foto_url: null,
@@ -60,6 +60,9 @@ export default function FuncionariosPage() {
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof EmployeeFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [showNewCargo, setShowNewCargo] = useState(false);
+  const [newCargoNome, setNewCargoNome] = useState('');
+  const [newCargoLoading, setNewCargoLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     if (authLoading || !user) {
@@ -163,10 +166,6 @@ export default function FuncionariosPage() {
 
     if (formData.salario_base <= 0) {
       errors.salario_base = 'Salário deve ser maior que zero';
-    }
-
-    if (!formData.data_admissao) {
-      errors.data_admissao = 'Data de admissão é obrigatória';
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -420,11 +419,55 @@ export default function FuncionariosPage() {
 
             {/* Cargo */}
             <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium text-gray-700">Cargo <span className="text-red-500">*</span></label>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCargo(!showNewCargo)}
+                  className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  Novo Cargo
+                </button>
+              </div>
+              {showNewCargo && (
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newCargoNome}
+                    onChange={(e) => setNewCargoNome(e.target.value)}
+                    placeholder="Nome do novo cargo"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                  <button
+                    type="button"
+                    disabled={!newCargoNome.trim() || newCargoLoading}
+                    onClick={async () => {
+                      try {
+                        setNewCargoLoading(true);
+                        const result = await apiComplete.cargos.create({ nome: newCargoNome.trim(), descricao: '' });
+                        await audit.log('CREATE', 'Cargo', `Criou cargo "${newCargoNome.trim()}"`, result?.id);
+                        const updatedCargos = await apiComplete.cargos.list();
+                        setCargos(updatedCargos);
+                        if (result?.id) setFormData({ ...formData, cargo_id: result.id });
+                        setNewCargoNome('');
+                        setShowNewCargo(false);
+                      } catch (error) {
+                        alert(error instanceof Error ? error.message : 'Erro ao criar cargo');
+                      } finally {
+                        setNewCargoLoading(false);
+                      }
+                    }}
+                    className="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {newCargoLoading ? '...' : 'Criar'}
+                  </button>
+                </div>
+              )}
               <Select
                 options={cargoOptions}
                 value={formData.cargo_id}
                 onChange={(value) => setFormData({ ...formData, cargo_id: value })}
-                label="Cargo"
                 required
                 searchable
                 error={formErrors.cargo_id}
@@ -450,7 +493,6 @@ export default function FuncionariosPage() {
                 value={formData.data_admissao}
                 onChange={(date) => setFormData({ ...formData, data_admissao: date })}
                 label="Data de Admissão"
-                required
                 error={formErrors.data_admissao}
               />
             </div>

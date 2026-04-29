@@ -1,6 +1,8 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { StatsCard } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -22,25 +24,31 @@ import type { ConsumoAgua, LancamentoMO, Manutencao, Employee, ProductionLine } 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
 
-type DashboardTab = 'MOD' | 'MOI' | 'Manutencao' | 'Materia';
+type DashboardTab = 'MOD' | 'MOI' | 'Manutencao' | 'Materia' | 'Agua';
 
 type ChartDataItem = {
   month: string;
+  monthNumber: number;
   MOD: number;
   MOI: number;
   Manutencao: number;
   Materia: number;
+  Agua: number;
 };
 
 type MoRowWithMonth = Pick<LancamentoMO, 'tipo' | 'custo_mensal' | 'mes'>;
-type MoRow = Pick<LancamentoMO, 'tipo' | 'custo_mensal'>;
-type ManutencaoRow = Pick<Manutencao, 'valor' | 'data'>;
-type ManutencaoValueRow = Pick<Manutencao, 'valor'>;
-type AguaRow = Pick<ConsumoAgua, 'valor' | 'data'>;
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { profile } = useAuth();
   const supabase = useMemo(() => createSupabaseClient(), []);
+
+  // Redirecionar master sem empresa para /admin
+  useEffect(() => {
+    if (profile && !profile.company_id) {
+      router.replace('/admin');
+    }
+  }, [profile, router]);
 
   const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -73,64 +81,58 @@ export default function DashboardPage() {
   const loadChartData = useCallback(async () => {
     if (!profile?.company_id) return;
 
+    // Buscar todos os dados do ano de uma vez
+    const [
+      { data: moAll },
+      { data: manutAll },
+      { data: materiaAll },
+      { data: aguaAll },
+    ] = await Promise.all([
+      supabase.from('lancamento_mo').select('tipo, custo_mensal, mes')
+        .eq('company_id', profile.company_id).eq('ano', selectedYear),
+      supabase.from('manutencao').select('valor, data')
+        .eq('company_id', profile.company_id),
+      (supabase.from('product_launches') as any).select('custo_total, mes')
+        .eq('company_id', profile.company_id).eq('ano', selectedYear),
+      supabase.from('consumo_agua').select('valor, data')
+        .eq('company_id', profile.company_id),
+    ]);
+
     const data: ChartDataItem[] = [];
 
     for (let mes = 1; mes <= 12; mes++) {
       const monthName = MONTHS.find((m) => m.value === mes)?.label || '';
 
-      const { data: moData } = await supabase
-        .from('lancamento_mo')
-        .select('tipo, custo_mensal')
-        .eq('company_id', profile.company_id)
-        .eq('ano', selectedYear)
-        .eq('mes', mes)
-        .returns<MoRow[]>();
-
       let modTotal = 0;
       let moiTotal = 0;
-
-      moData?.forEach((item) => {
-        if (item.tipo === 'MOD') {
-          modTotal += parseFloat(String(item.custo_mensal ?? 0));
-        } else {
-          moiTotal += parseFloat(String(item.custo_mensal ?? 0));
-        }
+      (moAll || []).filter((m: any) => m.mes === mes).forEach((item: any) => {
+        if (item.tipo === 'MOD') modTotal += parseFloat(String(item.custo_mensal ?? 0));
+        else moiTotal += parseFloat(String(item.custo_mensal ?? 0));
       });
 
-      const { data: manutencaoData } = await supabase
-        .from('manutencao')
-        .select('valor')
-        .eq('company_id', profile.company_id)
-        .gte('data', `${selectedYear}-${String(mes).padStart(2, '0')}-01`)
-        .lte('data', `${selectedYear}-${String(mes).padStart(2, '0')}-31`)
-        .returns<ManutencaoValueRow[]>();
+      const manutencaoTotal = (manutAll || []).filter((item: any) => {
+        if (!item.data) return false;
+        const d = String(item.data);
+        return parseInt(d.substring(0, 4)) === selectedYear && parseInt(d.substring(5, 7)) === mes;
+      }).reduce((sum: number, item: any) => sum + parseFloat(String(item.valor ?? 0)), 0);
 
-      const manutencaoTotal =
-        manutencaoData?.reduce(
-          (sum, item) => sum + parseFloat(String(item.valor ?? 0)),
-          0
-        ) || 0;
+      const materiaTotal = (materiaAll || []).filter((item: any) => item.mes === mes)
+        .reduce((sum: number, item: any) => sum + parseFloat(String(item.custo_total ?? 0)), 0);
 
-      // Matéria-prima: buscar lançamentos de produtos (product_launches)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: materiaData } = await (supabase.from('product_launches') as any)
-        .select('custo_total')
-        .eq('company_id', profile.company_id)
-        .eq('ano', selectedYear)
-        .eq('mes', mes);
-
-      const materiaTotal =
-        materiaData?.reduce(
-          (sum: number, item: Record<string, unknown>) => sum + parseFloat(String(item.custo_total ?? 0)),
-          0
-        ) || 0;
+      const aguaTotal = (aguaAll || []).filter((item: any) => {
+        if (!item.data) return false;
+        const d = String(item.data);
+        return parseInt(d.substring(0, 4)) === selectedYear && parseInt(d.substring(5, 7)) === mes;
+      }).reduce((sum: number, item: any) => sum + parseFloat(String(item.valor ?? 0)), 0);
 
       data.push({
         month: monthName,
+        monthNumber: mes,
         MOD: modTotal,
         MOI: moiTotal,
         Manutencao: manutencaoTotal,
         Materia: materiaTotal,
+        Agua: aguaTotal,
       });
     }
 
@@ -184,49 +186,47 @@ export default function DashboardPage() {
         }
       });
 
-      // Carregar manutenção
-      let manutencaoQuery = supabase
+      // Carregar manutenção (buscar todos do ano e filtrar no JS)
+      const { data: manutencaoData, error: manutErr } = await supabase
         .from('manutencao')
         .select('valor, data')
         .eq('company_id', profile.company_id);
 
-      if (!showTotal && selectedMonths.length > 0) {
-        const startDate = `${selectedYear}-${String(Math.min(...selectedMonths)).padStart(2, '0')}-01`;
-        const endMonth = Math.max(...selectedMonths);
-        const endDate = `${selectedYear}-${String(endMonth).padStart(2, '0')}-31`;
-        manutencaoQuery = manutencaoQuery.gte('data', startDate).lte('data', endDate);
-      } else {
-        manutencaoQuery = manutencaoQuery.gte('data', `${selectedYear}-01-01`).lte('data', `${selectedYear}-12-31`);
-      }
+      if (manutErr) console.error('Erro manutencao:', manutErr);
 
-      const { data: manutencaoData } = await manutencaoQuery.returns<ManutencaoRow[]>();
-      const manutencaoTotal =
-        manutencaoData?.reduce(
-          (sum, item) => sum + parseFloat(String(item.valor ?? 0)),
-          0
-        ) || 0;
+      const manutencaoFiltered = (manutencaoData || []).filter((item: any) => {
+        if (!item.data) return false;
+        const d = String(item.data);
+        const itemYear = parseInt(d.substring(0, 4));
+        const itemMonth = parseInt(d.substring(5, 7));
+        if (itemYear !== selectedYear) return false;
+        if (!showTotal && selectedMonths.length > 0) return selectedMonths.includes(itemMonth);
+        return true;
+      });
+      const manutencaoTotal = manutencaoFiltered.reduce(
+        (sum: number, item: any) => sum + parseFloat(String(item.valor ?? 0)), 0
+      );
 
-      // Carregar consumo de água
-      let aguaQuery = supabase
+      // Carregar consumo de água (buscar todos do ano e filtrar no JS)
+      const { data: aguaData, error: aguaErr } = await supabase
         .from('consumo_agua')
         .select('valor, data')
         .eq('company_id', profile.company_id);
 
-      if (!showTotal && selectedMonths.length > 0) {
-        const startDate = `${selectedYear}-${String(Math.min(...selectedMonths)).padStart(2, '0')}-01`;
-        const endMonth = Math.max(...selectedMonths);
-        const endDate = `${selectedYear}-${String(endMonth).padStart(2, '0')}-31`;
-        aguaQuery = aguaQuery.gte('data', startDate).lte('data', endDate);
-      } else {
-        aguaQuery = aguaQuery.gte('data', `${selectedYear}-01-01`).lte('data', `${selectedYear}-12-31`);
-      }
+      if (aguaErr) console.error('Erro consumo_agua:', aguaErr);
 
-      const { data: aguaData } = await aguaQuery.returns<AguaRow[]>();
-      const aguaTotal =
-        aguaData?.reduce(
-          (sum, item) => sum + parseFloat(String(item.valor ?? 0)),
-          0
-        ) || 0;
+      const aguaFiltered = (aguaData || []).filter((item: any) => {
+        if (!item.data) return false;
+        const d = String(item.data);
+        const itemYear = parseInt(d.substring(0, 4));
+        const itemMonth = parseInt(d.substring(5, 7));
+        if (itemYear !== selectedYear) return false;
+        if (!showTotal && selectedMonths.length > 0) return selectedMonths.includes(itemMonth);
+        return true;
+      });
+      const aguaTotal = aguaFiltered.reduce(
+        (sum: number, item: any) => sum + parseFloat(String(item.valor ?? 0)), 0
+      );
 
       // Matéria prima (produtos consumidos) - buscar de product_launches
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -286,7 +286,8 @@ export default function DashboardPage() {
   };
 
   const getTotalForActiveTab = () => {
-    return chartData.reduce((sum, item) => sum + (item[activeTab] || 0), 0);
+    const filtered = showTotal ? chartData : chartData.filter(item => selectedMonths.includes(item.monthNumber));
+    return filtered.reduce((sum, item) => sum + (item[activeTab] || 0), 0);
   };
 
   const handleExportExcel = async () => {
@@ -309,7 +310,7 @@ export default function DashboardPage() {
         ['Custo M.O.D', stats.custoMOD],
         ['Custo M.O.I', stats.custoMOI],
         ['Matéria Prima', stats.materiaPrima],
-        ['Consumo Água', stats.consumoAgua],
+        ['Custo Variável', stats.consumoAgua],
         ['Manutenção', stats.manutencao],
         ['Total Operação', stats.totalOperacao],
         ['Total Geral', stats.totalGeral],
@@ -451,7 +452,7 @@ export default function DashboardPage() {
         XLSX.utils.book_append_sheet(wb, wsManut, 'Manutenção');
       }
 
-      // === ABA 6: CONSUMO ÁGUA ===
+      // === ABA 6: CUSTO VARIÁVEL ===
       const { data: aguaData } = await supabase
         .from('consumo_agua')
         .select('*')
@@ -469,7 +470,7 @@ export default function DashboardPage() {
           parseFloat(String(a.valor ?? 0)),
         ]);
         const aguaSheet = [
-          ['CONSUMO DE ÁGUA - ' + selectedYear],
+          ['CUSTO VARIÁVEL - ' + selectedYear],
           [],
           ['Data', 'Descrição', 'Observação', 'Valor (R$)'],
           ...aguaRows,
@@ -478,7 +479,7 @@ export default function DashboardPage() {
         ];
         const wsAgua = XLSX.utils.aoa_to_sheet(aguaSheet);
         wsAgua['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 25 }, { wch: 16 }];
-        XLSX.utils.book_append_sheet(wb, wsAgua, 'Consumo Água');
+        XLSX.utils.book_append_sheet(wb, wsAgua, 'Custo Variável');
       }
 
       // Gerar e baixar arquivo
@@ -531,7 +532,7 @@ export default function DashboardPage() {
         const { data } = await query.order('data', { ascending: false });
         setManutencaoDetalhada(data || []);
       } else if (tipo === 'Agua') {
-        // Buscar consumo de água
+        // Buscar custo variável
         let query = supabase
           .from('consumo_agua')
           .select('*')
@@ -596,7 +597,7 @@ export default function DashboardPage() {
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            {getYearsList(selectedYear - 5, selectedYear + 2).map((year) => (
+            {getYearsList().map((year) => (
               <option key={year} value={year}>
                 {year}
               </option>
@@ -641,7 +642,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
-          title="Consumo água"
+          title="Custo Variável"
           value={formatCurrency(stats.consumoAgua)}
           icon={<Droplets className="w-6 h-6" />}
           color="blue"
@@ -661,10 +662,10 @@ export default function DashboardPage() {
           color="orange"
         />
         <StatsCard
-          title="Total de geral"
+          title="Total Geral"
           value={formatCurrency(stats.totalGeral)}
           icon={<DollarSign className="w-6 h-6" />}
-          color="orange"
+          color="green"
         />
       </div>
 
@@ -712,6 +713,16 @@ export default function DashboardPage() {
             >
               Matéria prima
             </button>
+            <button
+              onClick={() => setActiveTab('Agua')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'Agua'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Custo Variável
+            </button>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-600">Total</p>
@@ -721,7 +732,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Gráfico de Linha */}
+        {/* Gráfico */}
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
@@ -740,8 +751,20 @@ export default function DashboardPage() {
                 dataKey={activeTab}
                 stroke="#6366f1"
                 strokeWidth={3}
-                dot={{ fill: '#6366f1', r: 6 }}
-                activeDot={{ r: 8 }}
+                dot={(props: any) => {
+                  const isSelected = showTotal || selectedMonths.includes(props.payload?.monthNumber);
+                  return (
+                    <circle
+                      cx={props.cx}
+                      cy={props.cy}
+                      r={isSelected ? 8 : 4}
+                      fill={isSelected ? '#6366f1' : '#c7d2fe'}
+                      stroke={isSelected ? '#4f46e5' : 'none'}
+                      strokeWidth={isSelected ? 2 : 0}
+                    />
+                  );
+                }}
+                activeDot={{ r: 10 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -756,7 +779,7 @@ export default function DashboardPage() {
           modalTipo === 'MOD' ? 'M.O.D'
           : modalTipo === 'MOI' ? 'M.O.I'
           : modalTipo === 'Manutencao' ? 'Manutenção'
-          : 'Consumo de Água'
+          : 'Custo Variável'
         }`}
         description={`${showTotal ? 'Ano completo' : selectedMonths.map(m => MONTHS.find(mon => mon.value === m)?.label).join(', ')} de ${selectedYear}`}
         size="xl"
@@ -908,7 +931,7 @@ export default function DashboardPage() {
           {modalTipo === 'Agua' && (
             <>
               {aguaDetalhada.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Nenhum consumo de água encontrado</p>
+                <p className="text-gray-500 text-center py-8">Nenhum custo variável encontrado</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">

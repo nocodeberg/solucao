@@ -171,7 +171,7 @@ export default function PecasHoraPage() {
   const fmt = (v: number, dec: number = 2) => v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
   return (
-    <MainLayout title="Peças por Hora - Galvanoplastia">
+    <MainLayout title="Peças por Hora">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <p className="text-gray-600">Cálculos eletroquímicos de produtividade por linha</p>

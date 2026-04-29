@@ -8,7 +8,7 @@ import { FormModal } from '@/components/ui/Modal';
 import Select, { SelectOption } from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
 import CurrencyInput from '@/components/ui/CurrencyInput';
-import { Plus, Wrench } from 'lucide-react';
+import { Plus, Wrench, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -39,6 +39,8 @@ export default function ManutencaoPage() {
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof ManutencaoFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [todasLinhas, setTodasLinhas] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (authLoading || !user) {
@@ -74,6 +76,7 @@ export default function ManutencaoPage() {
   }, [authLoading, user, loadData]);
 
   const handleCreate = () => {
+    setEditingId(null);
     setFormData({
       descricao: '',
       valor: 0,
@@ -82,7 +85,34 @@ export default function ManutencaoPage() {
       observacao: '',
     });
     setFormErrors({});
+    setTodasLinhas(false);
     setIsModalOpen(true);
+  };
+
+  const handleEdit = (reg: Manutencao) => {
+    setEditingId(reg.id);
+    setFormData({
+      descricao: reg.descricao || '',
+      valor: parseFloat(String(reg.valor ?? 0)),
+      data: reg.data || new Date().toISOString().split('T')[0],
+      production_line_id: reg.production_line_id || '',
+      observacao: reg.observacao || '',
+    });
+    setFormErrors({});
+    setTodasLinhas(false);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (reg: Manutencao) => {
+    if (!confirm(`Tem certeza que deseja excluir "${reg.descricao}"?`)) return;
+    try {
+      await apiComplete.manutencao.delete(reg.id);
+      await audit.log('DELETE', 'Manutenção', `Excluiu manutenção "${reg.descricao}"`, reg.id);
+      await loadData();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao excluir';
+      alert(message);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -99,8 +129,26 @@ export default function ManutencaoPage() {
 
     try {
       setSubmitLoading(true);
-      const result = await apiComplete.manutencao.create(formData);
-      await audit.log('CREATE', 'Manutenção', `Criou manutenção "${formData.descricao}"`, result?.id);
+
+      if (editingId) {
+        await apiComplete.manutencao.update(editingId, formData);
+        await audit.log('UPDATE', 'Manutenção', `Editou manutenção "${formData.descricao}"`, editingId);
+      } else if (todasLinhas && linhas.length > 0) {
+        const valorPorLinha = formData.valor / linhas.length;
+        for (const linha of linhas) {
+          const result = await apiComplete.manutencao.create({
+            ...formData,
+            valor: valorPorLinha,
+            production_line_id: linha.id,
+          });
+          await audit.log('CREATE', 'Manutenção', `Criou manutenção "${formData.descricao}" - ${linha.name}`, result?.id);
+        }
+      } else {
+        const result = await apiComplete.manutencao.create(formData);
+        await audit.log('CREATE', 'Manutenção', `Criou manutenção "${formData.descricao}"`, result?.id);
+      }
+
+      setEditingId(null);
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {
@@ -185,6 +233,16 @@ export default function ManutencaoPage() {
           keyExtractor={(reg) => reg.id}
           searchKeys={['descricao', 'observacao']}
           emptyMessage="Nenhum registro de manutenção"
+          actions={(reg) => (
+            <div className="flex items-center justify-end gap-1">
+              <button onClick={() => handleEdit(reg)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button onClick={() => handleDelete(reg)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         />
       )}
 
@@ -192,8 +250,8 @@ export default function ManutencaoPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
-        title="Novo Registro de Manutenção"
-        submitText="Criar"
+        title={editingId ? 'Editar Manutenção' : 'Novo Registro de Manutenção'}
+        submitText={editingId ? 'Salvar' : 'Criar'}
         isLoading={submitLoading}
       >
         <div className="space-y-4">
@@ -239,13 +297,26 @@ export default function ManutencaoPage() {
           <div>
             <Select
               options={linhaOptions}
-              value={formData.production_line_id}
+              value={todasLinhas ? '' : formData.production_line_id}
               onChange={(value) => setFormData({ ...formData, production_line_id: value })}
               label="Linha de Produção"
               searchable
               clearable
               placeholder="Selecione a linha (opcional)"
+              disabled={todasLinhas}
             />
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={todasLinhas}
+                onChange={(e) => {
+                  setTodasLinhas(e.target.checked);
+                  if (e.target.checked) setFormData({ ...formData, production_line_id: '' });
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-gray-700">Todas as linhas</span>
+            </label>
           </div>
 
           <div>

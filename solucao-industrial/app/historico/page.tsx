@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
-import { History, Search, Filter, User, Clock, Plus, Pencil, Trash2 } from 'lucide-react';
+import { History, Search, Filter, User, Clock, Plus, Pencil, Trash2, Building2 } from 'lucide-react';
 
 interface AuditLog {
   id: string;
@@ -35,7 +35,7 @@ const ENTITY_OPTIONS = [
   'Encargo',
   'Lançamento M.O.',
   'Manutenção',
-  'Consumo Água',
+  'Custo Variável',
   'Custos Variáveis',
   'Outros Custos',
   'Transporte',
@@ -71,6 +71,11 @@ function timeAgo(iso: string): string {
   return formatDateTime(iso);
 }
 
+interface CompanyOption {
+  id: string;
+  name: string;
+}
+
 export default function HistoricoPage() {
   const { user, loading: authLoading } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -78,21 +83,46 @@ export default function HistoricoPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEntity, setFilterEntity] = useState('');
   const [filterAction, setFilterAction] = useState('');
+  const [isMaster, setIsMaster] = useState(false);
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [filterCompany, setFilterCompany] = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/check').then(r => r.json()).then(d => {
+      if (d.isMaster) {
+        setIsMaster(true);
+        fetch('/api/admin/companies').then(r => r.json()).then(list => {
+          if (Array.isArray(list)) setCompanies(list.map((c: any) => ({ id: c.id, name: c.name })));
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   const loadLogs = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = { limit: 500 };
-      if (filterEntity) params.entity = filterEntity;
-      if (filterAction) params.action = filterAction;
-      const data = await apiComplete.auditLogs.list(params);
-      setLogs(data);
+      if (isMaster) {
+        const params = new URLSearchParams();
+        if (filterCompany) params.set('company_id', filterCompany);
+        if (filterEntity) params.set('entity', filterEntity);
+        if (filterAction) params.set('action', filterAction);
+        params.set('limit', '500');
+        const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
+        const data = await res.json();
+        setLogs(Array.isArray(data) ? data : []);
+      } else {
+        const params: any = { limit: 500 };
+        if (filterEntity) params.entity = filterEntity;
+        if (filterAction) params.action = filterAction;
+        const data = await apiComplete.auditLogs.list(params);
+        setLogs(data);
+      }
     } catch (error) {
       console.error('Erro ao carregar logs:', error);
     } finally {
       setLoading(false);
     }
-  }, [filterEntity, filterAction]);
+  }, [filterEntity, filterAction, isMaster, filterCompany]);
 
   useEffect(() => {
     if (user && !authLoading) loadLogs();
@@ -163,7 +193,22 @@ export default function HistoricoPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
+              {isMaster && (
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <select
+                    value={filterCompany}
+                    onChange={(e) => setFilterCompany(e.target.value)}
+                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white appearance-none"
+                  >
+                    <option value="">Todas empresas</option>
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <select
@@ -187,6 +232,14 @@ export default function HistoricoPage() {
                 <option value="UPDATE">Edição</option>
                 <option value="DELETE">Exclusão</option>
               </select>
+              {(searchTerm || filterEntity || filterAction || filterCompany) && (
+                <button
+                  onClick={() => { setSearchTerm(''); setFilterEntity(''); setFilterAction(''); setFilterCompany(''); }}
+                  className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors whitespace-nowrap"
+                >
+                  Limpar filtros
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -232,6 +285,11 @@ export default function HistoricoPage() {
                             {log.entity}
                           </span>
                           <p className="text-sm text-gray-900 font-medium truncate flex-1">{log.description}</p>
+                          {isMaster && (log as any).companies?.name && (
+                            <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex-shrink-0 truncate max-w-[120px]">
+                              {(log as any).companies.name}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0 w-[130px] justify-end">
                             <User className="w-3 h-3" />
                             {log.user_name}

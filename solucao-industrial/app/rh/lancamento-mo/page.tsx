@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
@@ -7,7 +8,7 @@ import DataTable, { Column } from '@/components/ui/DataTable';
 import { FormModal } from '@/components/ui/Modal';
 import Select, { SelectOption, MultiSelect } from '@/components/ui/Select';
 import CurrencyInput from '@/components/ui/CurrencyInput';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiComplete } from '@/lib/api/supabase-complete';
@@ -60,6 +61,7 @@ export default function LancamentoMOPage() {
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof LancamentoFormData, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (authLoading || !user) {
@@ -99,6 +101,7 @@ export default function LancamentoMOPage() {
   }, [authLoading, user, loadData]);
 
   const handleCreate = () => {
+    setEditingId(null);
     setFormData({
       employee_id: '',
       production_line_ids: [],
@@ -116,6 +119,41 @@ export default function LancamentoMOPage() {
     });
     setFormErrors({});
     setIsModalOpen(true);
+  };
+
+  const handleEdit = (reg: LancamentoMO) => {
+    setEditingId(reg.id);
+    const ids = (reg as unknown as Record<string, unknown>).production_line_ids as string[] | undefined;
+    setFormData({
+      employee_id: reg.employee_id || '',
+      production_line_ids: ids || (reg.production_line_id ? [reg.production_line_id] : []),
+      tipo: reg.tipo as 'MOD' | 'MOI',
+      mes: reg.mes,
+      ano: reg.ano,
+      horas_trabalhadas: parseFloat(String((reg as any).horas_trabalhadas ?? 220)),
+      salario_base: parseFloat(String(reg.salario_base ?? 0)),
+      custo_mensal: parseFloat(String(reg.custo_mensal ?? 0)),
+      horas_extra_50: parseFloat(String((reg as any).horas_extra_50 ?? 0)),
+      horas_extra_100: parseFloat(String((reg as any).horas_extra_100 ?? 0)),
+      por_fora: parseFloat(String((reg as any).por_fora ?? 0)),
+      insalubridade: !!(reg as any).insalubridade,
+      observacao: reg.observacao || '',
+    });
+    setFormErrors({});
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (reg: LancamentoMO) => {
+    const empName = employees.find(e => e.id === reg.employee_id)?.nome || '';
+    if (!confirm(`Deseja excluir o lançamento de "${empName}"?`)) return;
+    try {
+      await apiComplete.lancamentoMO.delete(reg.id);
+      await audit.log('DELETE', 'Lançamento M.O.', `Excluiu lançamento M.O. de "${empName}"`, reg.id);
+      await loadData();
+    } catch (error: unknown) {
+      console.error('Erro ao excluir lançamento:', error);
+      alert('Erro ao excluir lançamento');
+    }
   };
 
   // Busca percentual de um encargo pelo nome (exact first, then partial)
@@ -229,9 +267,45 @@ export default function LancamentoMOPage() {
         total_encargos: Math.round(calc.totalEncargosEmpresa * 100) / 100,
         custo_mensal: Math.round(calc.custoTotal * 100) / 100,
       };
-      const result = await apiComplete.lancamentoMO.create(submitData);
+
       const empName = employees.find(e => e.id === formData.employee_id)?.nome || '';
-      await audit.log('CREATE', 'Lançamento M.O.', `Criou lançamento M.O. para "${empName}" - ${MONTHS.find(m => m.value === formData.mes)?.fullLabel}/${formData.ano}`, result?.id);
+      const periodo = `${MONTHS.find(m => m.value === formData.mes)?.fullLabel}/${formData.ano}`;
+
+      if (editingId) {
+        await apiComplete.lancamentoMO.update(editingId, {
+          ...submitData,
+          production_line_ids: [formData.production_line_ids[0] || ''],
+          production_line_id: formData.production_line_ids[0] || '',
+        });
+        await audit.log('UPDATE', 'Lançamento M.O.', `Editou lançamento M.O. de "${empName}" - ${periodo}`, editingId);
+      } else {
+        const nLinhas = formData.production_line_ids.length || 1;
+        const custoDiv = Math.round((calc.custoTotal / nLinhas) * 100) / 100;
+        const salarioDiv = Math.round((formData.salario_base / nLinhas) * 100) / 100;
+        const heDiv50 = Math.round((calc.valorHoraExtra50 / nLinhas) * 100) / 100;
+        const heDiv100 = Math.round((calc.valorHoraExtra100 / nLinhas) * 100) / 100;
+        const insalDiv = Math.round((calc.valorInsalubridade / nLinhas) * 100) / 100;
+        const encDiv = Math.round((calc.totalEncargosEmpresa / nLinhas) * 100) / 100;
+        const porForaDiv = Math.round((formData.por_fora / nLinhas) * 100) / 100;
+
+        for (const lineId of formData.production_line_ids) {
+          const linhaData = {
+            ...submitData,
+            production_line_ids: [lineId],
+            production_line_id: lineId,
+            salario_base: salarioDiv,
+            custo_mensal: custoDiv,
+            valor_hora_extra: heDiv50 + heDiv100,
+            valor_insalubridade: insalDiv,
+            total_encargos: encDiv,
+            por_fora: porForaDiv,
+          };
+          const result = await apiComplete.lancamentoMO.create(linhaData);
+          const linhaNome = linhas.find(l => l.id === lineId)?.name || '';
+          await audit.log('CREATE', 'Lançamento M.O.', `Criou lançamento M.O. para "${empName}" - ${linhaNome} - ${periodo}`, result?.id);
+        }
+      }
+
       setIsModalOpen(false);
       await loadData();
     } catch (error: unknown) {
@@ -263,15 +337,6 @@ export default function LancamentoMOPage() {
     label: m.fullLabel,
   }));
 
-  // Totais por tipo
-  const totalMOD = lancamentos
-    .filter((l) => l.tipo === 'MOD')
-    .reduce((sum, l) => sum + parseFloat(String(l.custo_mensal ?? 0)), 0);
-
-  const totalMOI = lancamentos
-    .filter((l) => l.tipo === 'MOI')
-    .reduce((sum, l) => sum + parseFloat(String(l.custo_mensal ?? 0)), 0);
-
   const columns: Column<LancamentoMO>[] = [
     {
       key: 'employee_id',
@@ -287,31 +352,10 @@ export default function LancamentoMOPage() {
       label: 'Linha',
       render: (reg) => {
         const ids = (reg as unknown as Record<string, unknown>).production_line_ids as string[] | undefined;
-        const names: string[] = [];
-        if (ids && ids.length > 0) {
-          ids.forEach((id) => {
-            const nome = linhas.find((l) => l.id === id)?.name;
-            if (nome) names.push(nome);
-          });
-        } else if (reg.production_line_id) {
-          const nome = linhas.find((l) => l.id === reg.production_line_id)?.name;
-          if (nome) names.push(nome);
-        }
-        if (names.length === 0) return '-';
-        if (names.length === 1) return <span className="text-sm">{names[0]}</span>;
-        return (
-          <div className="relative group">
-            <span className="text-sm truncate max-w-[200px] inline-block align-middle">
-              {names[0]} <span className="text-xs text-primary-600 font-medium">+{names.length - 1}</span>
-            </span>
-            <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[220px]">
-              <p className="text-xs font-semibold text-gray-500 mb-1">Linhas ({names.length})</p>
-              {names.map((n, i) => (
-                <p key={i} className="text-sm text-gray-700 py-0.5">{n}</p>
-              ))}
-            </div>
-          </div>
-        );
+        const lineId = ids?.[0] || reg.production_line_id;
+        if (!lineId) return '-';
+        const nome = linhas.find((l) => l.id === lineId)?.name;
+        return <span className="text-sm">{nome || '-'}</span>;
       },
     },
     {
@@ -354,6 +398,28 @@ export default function LancamentoMOPage() {
       label: 'Observação',
       render: (reg) => reg.observacao || '-',
     },
+    {
+      key: 'id',
+      label: 'Ações',
+      render: (reg) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleEdit(reg)}
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Editar"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(reg)}
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Excluir"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -368,36 +434,6 @@ export default function LancamentoMOPage() {
           )}
         </div>
 
-        {/* Cards de Totais */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
-              <FileText className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total M.O.D</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalMOD)}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white">
-              <FileText className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total M.O.I</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalMOI)}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white">
-              <FileText className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Geral</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalMOD + totalMOI)}</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {loading ? (
@@ -416,8 +452,8 @@ export default function LancamentoMOPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
-        title="Novo Lançamento M.O"
-        submitText="Criar"
+        title={editingId ? 'Editar Lançamento M.O' : 'Novo Lançamento M.O'}
+        submitText={editingId ? 'Salvar' : 'Criar'}
         isLoading={submitLoading}
         size="xl"
       >

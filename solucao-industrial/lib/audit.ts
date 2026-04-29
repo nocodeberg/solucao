@@ -12,7 +12,7 @@ export type AuditEntity =
   | 'Encargo'
   | 'Lançamento M.O.'
   | 'Manutenção'
-  | 'Consumo Água'
+  | 'Custo Variável'
   | 'Custos Variáveis'
   | 'Outros Custos'
   | 'Transporte'
